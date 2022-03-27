@@ -67,6 +67,16 @@ load(Uxn *u, char *filepath)
 	return 1;
 }
 
+void
+redraw(Display *display, Visual *visual, Window window)
+{
+	XImage *ximage;
+	screen_redraw(&uxn_screen, uxn_screen.pixels);
+	ximage = XCreateImage(display, visual, DefaultDepth(display, DefaultScreen(display)), ZPixmap, 0, (char *)uxn_screen.pixels, uxn_screen.width, uxn_screen.height, 32, 0);
+	XPutImage(display, window, DefaultGC(display, 0), ximage, 0, 0, 0, 0, uxn_screen.width, uxn_screen.height);
+	/* XDestroyImage(ximage); */
+}
+
 /* /usr/include/X11/keysymdef.h */
 
 #define XK_Left 0xff51
@@ -80,13 +90,13 @@ load(Uxn *u, char *filepath)
 #define XK_Alt 0xffe9
 
 void
-processEvent(Display *display, Window window, XImage *ximage, int width, int height)
+processEvent(Display *display, Visual *visual, Window window)
 {
 	XEvent ev;
 	XNextEvent(display, &ev);
 	switch(ev.type) {
 	case Expose:
-		XPutImage(display, window, DefaultGC(display, 0), ximage, 0, 0, 0, 0, width, height);
+		redraw(display, visual, window);
 		break;
 	case KeyPress: {
 		XKeyPressedEvent *e = (XKeyPressedEvent *)&ev;
@@ -112,6 +122,9 @@ processEvent(Display *display, Window window, XImage *ximage, int width, int hei
 	} break;
 	case ButtonPress:
 		exit(0);
+	}
+	if(uxn_screen.fg.changed || uxn_screen.bg.changed) {
+		redraw(display, visual, window);
 	}
 }
 
@@ -139,11 +152,6 @@ start(Uxn *u)
 	return 1;
 }
 
-void
-redraw(void)
-{
-}
-
 int
 main(int argc, char **argv)
 {
@@ -161,9 +169,6 @@ main(int argc, char **argv)
 	if(!uxn_eval(&u, PAGE_PROGRAM))
 		return error("Boot", "Failed to start rom.");
 
-	screen_redraw(&uxn_screen, uxn_screen.pixels);
-
-	XImage *ximage;
 	Display *display = XOpenDisplay(NULL);
 	Visual *visual = DefaultVisual(display, 0);
 	Window window = XCreateSimpleWindow(display, RootWindow(display, 0), 0, 0, uxn_screen.width, uxn_screen.height, 1, 0, 0);
@@ -172,15 +177,10 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	ximage = XCreateImage(display, visual, DefaultDepth(display, DefaultScreen(display)), ZPixmap, 0, (char *)uxn_screen.pixels, uxn_screen.width, uxn_screen.height, 32, 0);
-
 	XSelectInput(display, window, ButtonPressMask | ExposureMask | KeyPressMask | KeyReleaseMask);
 	XMapWindow(display, window);
 	while(1) {
-		processEvent(display, window, ximage, uxn_screen.width, uxn_screen.height);
-
-		if(uxn_screen.fg.changed || uxn_screen.bg.changed)
-			redraw();
+		processEvent(display, visual, window);
 	}
 	return 0;
 }
