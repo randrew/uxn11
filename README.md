@@ -22,11 +22,11 @@ cc src/devices/datetime.c src/devices/system.c src/devices/file.c src/uxn.c -DND
 
 - `00` system
 - `10` console(partial)
-- `20` screen
+- `20` screen(partial/vector)
 - `30` audio(missing)
 - `70` midi(missing)
-- `80` controller(partial)
-- `90` mouse
+- `80` controller(partial/key)
+- `90` mouse(partial/scroll)
 - `a0` file(missing)
 - `c0` datetime
 

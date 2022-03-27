@@ -1,13 +1,6 @@
 #include <stdio.h>
-#include <time.h>
-#include <unistd.h>
-
-#include <X11/Xlib.h>
 #include <stdlib.h>
-#include <string.h>
-
-#define WIDTH 64 * 8
-#define HEIGHT 40 * 8
+#include <X11/Xlib.h>
 
 #include "uxn.h"
 #include "devices/system.h"
@@ -16,8 +9,15 @@
 #include "devices/mouse.h"
 #include "devices/datetime.h"
 
-static Device *devscreen, *devctrl, *devmouse;
 static XImage *ximage;
+static Display *display;
+static Visual *visual;
+static Window window;
+
+static Device *devscreen, *devctrl, *devmouse;
+
+#define WIDTH 64 * 8
+#define HEIGHT 40 * 8
 
 static int
 error(char *msg, const char *err)
@@ -70,8 +70,8 @@ load(Uxn *u, char *filepath)
 	return 1;
 }
 
-void
-redraw(Display *display, Visual *visual, Window window)
+static void
+redraw(void)
 {
 	screen_redraw(&uxn_screen, uxn_screen.pixels);
 	XPutImage(display, window, DefaultGC(display, 0), ximage, 0, 0, 0, 0, uxn_screen.width, uxn_screen.height);
@@ -80,26 +80,30 @@ redraw(Display *display, Visual *visual, Window window)
 /* /usr/include/X11/keysymdef.h */
 
 #define XK_Escape 0xff1b
-
 #define XK_Left 0xff51
 #define XK_Up 0xff52
 #define XK_Right 0xff53
 #define XK_Down 0xff54
-
 #define XK_Home 0xff50
 #define XK_Shift 0xffe1
 #define XK_Control 0xffe3
 #define XK_Alt 0xffe9
 
-void
-processEvent(Display *display, Visual *visual, Window window)
+static void
+processEvent(void)
 {
 	XEvent ev;
 	XNextEvent(display, &ev);
 	switch(ev.type) {
 	case Expose:
-		redraw(display, visual, window);
+		redraw();
 		break;
+	case ClientMessage: {
+		XDestroyImage(ximage);
+		XDestroyWindow(display, window);
+		XCloseDisplay(display);
+		exit(0);
+	} break;
 	case KeyPress: {
 		XKeyPressedEvent *e = (XKeyPressedEvent *)&ev;
 		if(e->keycode == XKeysymToKeycode(display, XK_Escape)) exit(0);
@@ -131,29 +135,20 @@ processEvent(Display *display, Visual *visual, Window window)
 		XButtonPressedEvent *e = (XButtonPressedEvent *)&ev;
 		mouse_up(devmouse, e->button);
 	} break;
-
 	case MotionNotify: {
 		XMotionEvent *e = (XMotionEvent *)&ev;
 		mouse_pos(devmouse, e->x, e->y);
 	} break;
-	case ClientMessage: {
-		XClientMessageEvent *e = (XClientMessageEvent *)&ev;
-		XDestroyImage(ximage);
-		XDestroyWindow(display, window);
-		XCloseDisplay(display);
-		exit(0);
-	} break;
-	}
-	if(uxn_screen.fg.changed || uxn_screen.bg.changed) {
-		redraw(display, visual, window);
 	}
 }
 
 static int
-start(Uxn *u)
+start(Uxn *u, char *rom)
 {
 	if(!uxn_boot(u, (Uint8 *)calloc(0x10000, sizeof(Uint8))))
 		return error("Boot", "Failed");
+	if(!load(u, rom))
+		return error("Load", "Failed");
 	/* system   */ uxn_port(u, 0x0, system_dei, system_deo);
 	/* console  */ uxn_port(u, 0x1, nil_dei, console_deo);
 	/* screen   */ devscreen = uxn_port(u, 0x2, screen_dei, screen_deo);
@@ -170,6 +165,26 @@ start(Uxn *u)
 	/* empty    */ uxn_port(u, 0xd, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0xe, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0xf, nil_dei, nil_deo);
+	screen_resize(&uxn_screen, WIDTH, HEIGHT);
+	if(!uxn_eval(u, PAGE_PROGRAM))
+		return error("Boot", "Failed to start rom.");
+	return 1;
+}
+
+static int
+init(void)
+{
+	Atom wmDelete;
+	display = XOpenDisplay(NULL);
+	visual = DefaultVisual(display, 0);
+	window = XCreateSimpleWindow(display, RootWindow(display, 0), 0, 0, uxn_screen.width, uxn_screen.height, 1, 0, 0);
+	if(visual->class != TrueColor)
+		return error("Init", "True-color visual failed");
+	XSelectInput(display, window, ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ExposureMask | KeyPressMask | KeyReleaseMask);
+	wmDelete = XInternAtom(display, "WM_DELETE_WINDOW", True);
+	XSetWMProtocols(display, window, &wmDelete, 1);
+	XMapWindow(display, window);
+	ximage = XCreateImage(display, visual, DefaultDepth(display, DefaultScreen(display)), ZPixmap, 0, (char *)uxn_screen.pixels, uxn_screen.width, uxn_screen.height, 32, 0);
 	return 1;
 }
 
@@ -177,35 +192,17 @@ int
 main(int argc, char **argv)
 {
 	Uxn u;
-
 	if(argc < 2)
 		return error("Usage", "uxncli game.rom args");
-	if(!start(&u))
+	if(!start(&u, argv[1]))
 		return error("Start", "Failed");
-	if(!load(&u, argv[1]))
-		return error("Load", "Failed");
-
-	screen_resize(&uxn_screen, WIDTH, HEIGHT);
-
-	if(!uxn_eval(&u, PAGE_PROGRAM))
-		return error("Boot", "Failed to start rom.");
-
-	Display *display = XOpenDisplay(NULL);
-	Visual *visual = DefaultVisual(display, 0);
-	Window window = XCreateSimpleWindow(display, RootWindow(display, 0), 0, 0, uxn_screen.width, uxn_screen.height, 1, 0, 0);
-	if(visual->class != TrueColor) {
-		fprintf(stderr, "Cannot handle non true color visual ...\n");
-		exit(1);
-	}
-
-	XSelectInput(display, window, ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ExposureMask | KeyPressMask | KeyReleaseMask);
-	Atom wmDelete = XInternAtom(display, "WM_DELETE_WINDOW", True);
-	XSetWMProtocols(display, window, &wmDelete, 1);
-	XMapWindow(display, window);
-	ximage = XCreateImage(display, visual, DefaultDepth(display, DefaultScreen(display)), ZPixmap, 0, (char *)uxn_screen.pixels, uxn_screen.width, uxn_screen.height, 32, 0);
+	if(!init())
+		return error("Init", "Failed");
 	while(1) {
-		processEvent(display, visual, window);
+		processEvent();
 		uxn_eval(&u, GETVECTOR(devscreen));
+		if(uxn_screen.fg.changed || uxn_screen.bg.changed)
+			redraw();
 		/* sleep(0.01); */
 	}
 	XDestroyImage(ximage);
