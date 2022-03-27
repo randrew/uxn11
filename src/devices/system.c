@@ -1,7 +1,7 @@
+#include <stdio.h>
+
 #include "../uxn.h"
 #include "system.h"
-
-#include <stdio.h>
 
 /*
 Copyright (c) 2022 Devine Lu Linvega, Andrew Alderwick

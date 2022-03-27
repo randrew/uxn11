@@ -7,6 +7,7 @@
 #include "devices/screen.h"
 #include "devices/controller.h"
 #include "devices/mouse.h"
+#include "devices/file.h"
 #include "devices/datetime.h"
 
 static XImage *ximage;
@@ -31,6 +32,14 @@ system_deo_special(Device *d, Uint8 port)
 {
 	if(port > 0x7 && port < 0xe)
 		screen_palette(&uxn_screen, &d->dat[0x8]);
+}
+
+static int
+console_input(Uxn *u, char c)
+{
+	Device *d = &u->dev[1];
+	d->dat[0x2] = c;
+	return uxn_eval(u, GETVECTOR(d));
 }
 
 static void
@@ -129,11 +138,11 @@ processEvent(void)
 	} break;
 	case ButtonPress: {
 		XButtonPressedEvent *e = (XButtonPressedEvent *)&ev;
-		mouse_down(devmouse, e->button);
+		mouse_down(devmouse, 0x1 << e->button - 1);
 	} break;
 	case ButtonRelease: {
 		XButtonPressedEvent *e = (XButtonPressedEvent *)&ev;
-		mouse_up(devmouse, e->button);
+		mouse_up(devmouse, 0x1 << e->button - 1);
 	} break;
 	case MotionNotify: {
 		XMotionEvent *e = (XMotionEvent *)&ev;
@@ -192,12 +201,20 @@ int
 main(int argc, char **argv)
 {
 	Uxn u;
+	int i;
 	if(argc < 2)
 		return error("Usage", "uxncli game.rom args");
 	if(!start(&u, argv[1]))
 		return error("Start", "Failed");
 	if(!init())
 		return error("Init", "Failed");
+	/* console vector */
+	for(i = 2; i < argc; i++) {
+		char *p = argv[i];
+		while(*p) console_input(&u, *p++);
+		console_input(&u, '\n');
+	}
+	/* main loop */
 	while(1) {
 		processEvent();
 		uxn_eval(&u, GETVECTOR(devscreen));

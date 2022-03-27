@@ -1,3 +1,9 @@
+#include <stdio.h>
+#include <dirent.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include "../uxn.h"
 #include "file.h"
 
@@ -12,12 +18,6 @@ copyright notice and this permission notice appear in all copies.
 THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 WITH REGARD TO THIS SOFTWARE.
 */
-
-#include <stdio.h>
-#include <dirent.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 typedef struct {
 	FILE *f;
