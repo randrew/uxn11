@@ -12,6 +12,9 @@
 #include "uxn.h"
 #include "devices/system.h"
 #include "devices/screen.h"
+#include "devices/controller.h"
+
+static Device *devctrl;
 
 static int
 error(char *msg, const char *err)
@@ -64,6 +67,18 @@ load(Uxn *u, char *filepath)
 	return 1;
 }
 
+/* /usr/include/X11/keysymdef.h */
+
+#define XK_Left 0xff51
+#define XK_Up 0xff52
+#define XK_Right 0xff53
+#define XK_Down 0xff54
+
+#define XK_Home 0xff50
+#define XK_Shift 0xffe1
+#define XK_Control 0xffe3
+#define XK_Alt 0xffe9
+
 void
 processEvent(Display *display, Window window, XImage *ximage, int width, int height)
 {
@@ -73,6 +88,28 @@ processEvent(Display *display, Window window, XImage *ximage, int width, int hei
 	case Expose:
 		XPutImage(display, window, DefaultGC(display, 0), ximage, 0, 0, 0, 0, width, height);
 		break;
+	case KeyPress: {
+		XKeyPressedEvent *e = (XKeyPressedEvent *)&ev;
+		if(e->keycode == XKeysymToKeycode(display, XK_Up)) controller_down(devctrl, 0x10);
+		if(e->keycode == XKeysymToKeycode(display, XK_Down)) controller_down(devctrl, 0x20);
+		if(e->keycode == XKeysymToKeycode(display, XK_Left)) controller_down(devctrl, 0x40);
+		if(e->keycode == XKeysymToKeycode(display, XK_Right)) controller_down(devctrl, 0x80);
+		if(e->keycode == XKeysymToKeycode(display, XK_Control)) controller_down(devctrl, 0x01);
+		if(e->keycode == XKeysymToKeycode(display, XK_Alt)) controller_down(devctrl, 0x02);
+		if(e->keycode == XKeysymToKeycode(display, XK_Shift)) controller_down(devctrl, 0x04);
+		if(e->keycode == XKeysymToKeycode(display, XK_Home)) controller_down(devctrl, 0x08);
+	} break;
+	case KeyRelease: {
+		XKeyPressedEvent *e = (XKeyPressedEvent *)&ev;
+		if(e->keycode == XKeysymToKeycode(display, XK_Up)) controller_up(devctrl, 0x10);
+		if(e->keycode == XKeysymToKeycode(display, XK_Down)) controller_up(devctrl, 0x20);
+		if(e->keycode == XKeysymToKeycode(display, XK_Left)) controller_up(devctrl, 0x40);
+		if(e->keycode == XKeysymToKeycode(display, XK_Right)) controller_up(devctrl, 0x80);
+		if(e->keycode == XKeysymToKeycode(display, XK_Control)) controller_up(devctrl, 0x01);
+		if(e->keycode == XKeysymToKeycode(display, XK_Alt)) controller_up(devctrl, 0x02);
+		if(e->keycode == XKeysymToKeycode(display, XK_Shift)) controller_up(devctrl, 0x04);
+		if(e->keycode == XKeysymToKeycode(display, XK_Home)) controller_up(devctrl, 0x08);
+	} break;
 	case ButtonPress:
 		exit(0);
 	}
@@ -91,7 +128,7 @@ start(Uxn *u)
 	/* empty    */ uxn_port(u, 0x5, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0x6, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0x7, nil_dei, nil_deo);
-	/* empty    */ uxn_port(u, 0x8, nil_dei, nil_deo);
+	/* control  */ devctrl = uxn_port(u, 0x8, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0x9, nil_dei, nil_deo);
 	/* file     */ uxn_port(u, 0xa, nil_dei, nil_deo);
 	/* datetime */ uxn_port(u, 0xb, nil_dei, nil_deo);
@@ -100,6 +137,11 @@ start(Uxn *u)
 	/* empty    */ uxn_port(u, 0xe, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0xf, nil_dei, nil_deo);
 	return 1;
+}
+
+void
+redraw(void)
+{
 }
 
 int
@@ -132,10 +174,13 @@ main(int argc, char **argv)
 
 	ximage = XCreateImage(display, visual, DefaultDepth(display, DefaultScreen(display)), ZPixmap, 0, (char *)uxn_screen.pixels, uxn_screen.width, uxn_screen.height, 32, 0);
 
-	XSelectInput(display, window, ButtonPressMask | ExposureMask);
+	XSelectInput(display, window, ButtonPressMask | ExposureMask | KeyPressMask | KeyReleaseMask);
 	XMapWindow(display, window);
 	while(1) {
 		processEvent(display, window, ximage, uxn_screen.width, uxn_screen.height);
+
+		if(uxn_screen.fg.changed || uxn_screen.bg.changed)
+			redraw();
 	}
 	return 0;
 }
