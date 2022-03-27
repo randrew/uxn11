@@ -2,8 +2,6 @@
 
 An emulator for the [Uxn stack-machine](https://wiki.xxiivv.com/site/uxn.html), written in ANSI C. 
 
-More docs coming soon.
-
 ## Graphical
 
 All you need is X11.
@@ -19,6 +17,18 @@ If you wish to build the emulator without graphics mode:
 ```sh
 cc src/devices/datetime.c src/devices/system.c src/devices/file.c src/uxn.c -DNDEBUG -Os -g0 -s src/uxncli.c -o bin/uxncli
 ```
+
+## Devices
+
+- `00` system
+- `10` console(partial)
+- `20` screen
+- `30` audio(missing)
+- `70` midi(missing)
+- `80` controller(partial)
+- `90` mouse
+- `a0` file(missing)
+- `c0` datetime
 
 ## Contributing
 
