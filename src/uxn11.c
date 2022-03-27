@@ -13,20 +13,11 @@
 #include "devices/system.h"
 #include "devices/screen.h"
 
-static Device *devsystem, *devconsole, *devscreen;
-
 static int
 error(char *msg, const char *err)
 {
 	fprintf(stderr, "Error %s: %s\n", msg, err);
 	return 0;
-}
-
-static int
-set_size(Uint16 width, Uint16 height, int is_resize)
-{
-	screen_resize(&uxn_screen, width, height);
-	return 1;
 }
 
 void
@@ -92,9 +83,9 @@ start(Uxn *u)
 {
 	if(!uxn_boot(u, (Uint8 *)calloc(0x10000, sizeof(Uint8))))
 		return error("Boot", "Failed");
-	/* system   */ devsystem = uxn_port(u, 0x0, system_dei, system_deo);
-	/* console  */ devconsole = uxn_port(u, 0x1, nil_dei, console_deo);
-	/* screen   */ devscreen = uxn_port(u, 0x2, screen_dei, screen_deo);
+	/* system   */ uxn_port(u, 0x0, system_dei, system_deo);
+	/* console  */ uxn_port(u, 0x1, nil_dei, console_deo);
+	/* screen   */ uxn_port(u, 0x2, screen_dei, screen_deo);
 	/* empty    */ uxn_port(u, 0x3, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0x4, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0x5, nil_dei, nil_deo);
@@ -123,8 +114,7 @@ main(int argc, char **argv)
 	if(!load(&u, argv[1]))
 		return error("Load", "Failed");
 
-	if(!set_size(WIDTH, HEIGHT, 0))
-		return error("Window", "Failed to set window size.");
+	screen_resize(&uxn_screen, WIDTH, HEIGHT);
 
 	if(!uxn_eval(&u, PAGE_PROGRAM))
 		return error("Boot", "Failed to start rom.");
