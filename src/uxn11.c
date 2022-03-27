@@ -13,8 +13,10 @@
 #include "devices/system.h"
 #include "devices/screen.h"
 #include "devices/controller.h"
+#include "devices/mouse.h"
+#include "devices/datetime.h"
 
-static Device *devctrl;
+static Device *devscreen, *devctrl, *devmouse;
 
 static int
 error(char *msg, const char *err)
@@ -79,6 +81,8 @@ redraw(Display *display, Visual *visual, Window window)
 
 /* /usr/include/X11/keysymdef.h */
 
+#define XK_Escape 0xff1b
+
 #define XK_Left 0xff51
 #define XK_Up 0xff52
 #define XK_Right 0xff53
@@ -100,6 +104,7 @@ processEvent(Display *display, Visual *visual, Window window)
 		break;
 	case KeyPress: {
 		XKeyPressedEvent *e = (XKeyPressedEvent *)&ev;
+		if(e->keycode == XKeysymToKeycode(display, XK_Escape)) exit(0);
 		if(e->keycode == XKeysymToKeycode(display, XK_Up)) controller_down(devctrl, 0x10);
 		if(e->keycode == XKeysymToKeycode(display, XK_Down)) controller_down(devctrl, 0x20);
 		if(e->keycode == XKeysymToKeycode(display, XK_Left)) controller_down(devctrl, 0x40);
@@ -120,8 +125,19 @@ processEvent(Display *display, Visual *visual, Window window)
 		if(e->keycode == XKeysymToKeycode(display, XK_Shift)) controller_up(devctrl, 0x04);
 		if(e->keycode == XKeysymToKeycode(display, XK_Home)) controller_up(devctrl, 0x08);
 	} break;
-	case ButtonPress:
-		exit(0);
+	case ButtonPress: {
+		XButtonPressedEvent *e = (XButtonPressedEvent *)&ev;
+		mouse_down(devmouse, e->button);
+	} break;
+	case ButtonRelease: {
+		XButtonPressedEvent *e = (XButtonPressedEvent *)&ev;
+		mouse_up(devmouse, e->button);
+	} break;
+
+	case MotionNotify: {
+		XMotionEvent *e = (XMotionEvent *)&ev;
+		mouse_pos(devmouse, e->x, e->y);
+	} break;
 	}
 	if(uxn_screen.fg.changed || uxn_screen.bg.changed) {
 		redraw(display, visual, window);
@@ -135,17 +151,17 @@ start(Uxn *u)
 		return error("Boot", "Failed");
 	/* system   */ uxn_port(u, 0x0, system_dei, system_deo);
 	/* console  */ uxn_port(u, 0x1, nil_dei, console_deo);
-	/* screen   */ uxn_port(u, 0x2, screen_dei, screen_deo);
+	/* screen   */ devscreen = uxn_port(u, 0x2, screen_dei, screen_deo);
 	/* empty    */ uxn_port(u, 0x3, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0x4, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0x5, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0x6, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0x7, nil_dei, nil_deo);
 	/* control  */ devctrl = uxn_port(u, 0x8, nil_dei, nil_deo);
-	/* empty    */ uxn_port(u, 0x9, nil_dei, nil_deo);
+	/* mouse    */ devmouse = uxn_port(u, 0x9, nil_dei, nil_deo);
 	/* file     */ uxn_port(u, 0xa, nil_dei, nil_deo);
 	/* datetime */ uxn_port(u, 0xb, nil_dei, nil_deo);
-	/* empty    */ uxn_port(u, 0xc, nil_dei, nil_deo);
+	/* empty    */ uxn_port(u, 0xc, datetime_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0xd, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0xe, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0xf, nil_dei, nil_deo);
@@ -177,10 +193,12 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	XSelectInput(display, window, ButtonPressMask | ExposureMask | KeyPressMask | KeyReleaseMask);
+	XSelectInput(display, window, ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ExposureMask | KeyPressMask | KeyReleaseMask);
 	XMapWindow(display, window);
 	while(1) {
 		processEvent(display, visual, window);
+		uxn_eval(&u, GETVECTOR(devscreen));
+		/* sleep(0.01); */
 	}
 	return 0;
 }

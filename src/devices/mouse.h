@@ -10,19 +10,7 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 WITH REGARD TO THIS SOFTWARE.
 */
 
-typedef signed int Sint32;
-
-#define SAMPLE_FREQUENCY 44100
-
-typedef struct {
-	Uint8 *addr;
-	Uint32 count, advance, period, age, a, d, s, r;
-	Uint16 i, len;
-	Sint8 volume[2];
-	Uint8 pitch, repeat;
-} Apu;
-
-int apu_render(Apu *c, Sint16 *sample, Sint16 *end);
-void apu_start(Apu *c, Uint16 adsr, Uint8 pitch);
-Uint8 apu_get_vu(Apu *c);
-void apu_finished_handler(Apu *c);
+void mouse_down(Device *d, Uint8 mask);
+void mouse_up(Device *d, Uint8 mask);
+void mouse_pos(Device *d, Uint16 x, Uint16 y);
+void mouse_scroll(Device *d, Uint16 x, Uint16 y);
