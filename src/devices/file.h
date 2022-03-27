@@ -10,8 +10,7 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 WITH REGARD TO THIS SOFTWARE.
 */
 
-Uint16 file_init(void *filename);
-Uint16 file_read(void *dest, Uint16 len);
-Uint16 file_write(void *src, Uint16 len, Uint8 flags);
-Uint16 file_stat(void *dest, Uint16 len);
-Uint16 file_delete(void);
+#define POLYFILEY 2
+
+void file_i_deo(int instance, Device *d, Uint8 port);
+Uint8 file_i_dei(int instance, Device *d, Uint8 port);

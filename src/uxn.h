@@ -1,3 +1,6 @@
+#ifndef UXN_UXN_H
+#define UXN_UXN_H
+
 /*
 Copyright (c) 2021 Devine Lu Linvega
 
@@ -17,34 +20,33 @@ typedef unsigned int Uint32;
 
 #define PAGE_PROGRAM 0x0100
 
-typedef struct {
-	Uint8 ptr, kptr, error;
-	Uint8 dat[256];
-} Stack;
+/* clang-format off */
+
+#define DEVPEEK16(o, x) { (o) = (d->dat[(x)] << 8) + d->dat[(x) + 1]; }
+#define DEVPOKE16(x, y) { d->dat[(x)] = (y) >> 8; d->dat[(x) + 1] = (y); }
+#define GETVECTOR(d) ((d)->dat[0] << 8 | (d)->dat[1])
+
+/* clang-format on */
 
 typedef struct {
-	Uint16 ptr;
-	Uint8 dat[65536];
-} Memory;
+	Uint8 ptr, dat[255];
+} Stack;
 
 typedef struct Device {
 	struct Uxn *u;
-	Uint8 addr, dat[16], *mem;
-	Uint16 vector;
+	Uint8 dat[16];
 	Uint8 (*dei)(struct Device *d, Uint8);
 	void (*deo)(struct Device *d, Uint8);
 } Device;
 
 typedef struct Uxn {
-	Stack wst, rst, *src, *dst;
-	Memory ram;
+	Uint8 *ram;
+	Stack wst, rst;
 	Device dev[16];
 } Uxn;
 
-void poke16(Uint8 *m, Uint16 a, Uint16 b);
-Uint16 peek16(Uint8 *m, Uint16 a);
-
-int uxn_boot(Uxn *c);
-int uxn_eval(Uxn *u, Uint16 vec);
-int uxn_halt(Uxn *u, Uint8 error, char *name, int id);
+int uxn_boot(Uxn *u, Uint8 *ram);
+int uxn_eval(Uxn *u, Uint16 pc);
+int uxn_halt(Uxn *u, Uint8 error, Uint16 addr);
 Device *uxn_port(Uxn *u, Uint8 id, Uint8 (*deifn)(Device *, Uint8), void (*deofn)(Device *, Uint8));
+#endif /* UXN_UXN_H */
