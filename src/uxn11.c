@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 
 #include "uxn.h"
 #include "devices/system.h"
@@ -115,6 +116,7 @@ processEvent(void)
 	} break;
 	case KeyPress: {
 		XKeyPressedEvent *e = (XKeyPressedEvent *)&ev;
+		char buf[7];
 		if(e->keycode == XKeysymToKeycode(display, XK_Escape)) exit(0);
 		if(e->keycode == XKeysymToKeycode(display, XK_Up)) controller_down(devctrl, 0x10);
 		if(e->keycode == XKeysymToKeycode(display, XK_Down)) controller_down(devctrl, 0x20);
@@ -124,6 +126,8 @@ processEvent(void)
 		if(e->keycode == XKeysymToKeycode(display, XK_Alt)) controller_down(devctrl, 0x02);
 		if(e->keycode == XKeysymToKeycode(display, XK_Shift)) controller_down(devctrl, 0x04);
 		if(e->keycode == XKeysymToKeycode(display, XK_Home)) controller_down(devctrl, 0x08);
+		XLookupString(e, buf, 7, NULL, NULL);
+		controller_key(devctrl, buf[0]);
 	} break;
 	case KeyRelease: {
 		XKeyPressedEvent *e = (XKeyPressedEvent *)&ev;
