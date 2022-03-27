@@ -17,6 +17,7 @@
 #include "devices/datetime.h"
 
 static Device *devscreen, *devctrl, *devmouse;
+static XImage *ximage;
 
 static int
 error(char *msg, const char *err)
@@ -72,11 +73,8 @@ load(Uxn *u, char *filepath)
 void
 redraw(Display *display, Visual *visual, Window window)
 {
-	XImage *ximage;
 	screen_redraw(&uxn_screen, uxn_screen.pixels);
-	ximage = XCreateImage(display, visual, DefaultDepth(display, DefaultScreen(display)), ZPixmap, 0, (char *)uxn_screen.pixels, uxn_screen.width, uxn_screen.height, 32, 0);
 	XPutImage(display, window, DefaultGC(display, 0), ximage, 0, 0, 0, 0, uxn_screen.width, uxn_screen.height);
-	/* XDestroyImage(ximage); */
 }
 
 /* /usr/include/X11/keysymdef.h */
@@ -138,6 +136,13 @@ processEvent(Display *display, Visual *visual, Window window)
 		XMotionEvent *e = (XMotionEvent *)&ev;
 		mouse_pos(devmouse, e->x, e->y);
 	} break;
+	case ClientMessage: {
+		XClientMessageEvent *e = (XClientMessageEvent *)&ev;
+		XDestroyImage(ximage);
+		XDestroyWindow(display, window);
+		XCloseDisplay(display);
+		exit(0);
+	} break;
 	}
 	if(uxn_screen.fg.changed || uxn_screen.bg.changed) {
 		redraw(display, visual, window);
@@ -194,11 +199,15 @@ main(int argc, char **argv)
 	}
 
 	XSelectInput(display, window, ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ExposureMask | KeyPressMask | KeyReleaseMask);
+	Atom wmDelete = XInternAtom(display, "WM_DELETE_WINDOW", True);
+	XSetWMProtocols(display, window, &wmDelete, 1);
 	XMapWindow(display, window);
+	ximage = XCreateImage(display, visual, DefaultDepth(display, DefaultScreen(display)), ZPixmap, 0, (char *)uxn_screen.pixels, uxn_screen.width, uxn_screen.height, 32, 0);
 	while(1) {
 		processEvent(display, visual, window);
 		uxn_eval(&u, GETVECTOR(devscreen));
 		/* sleep(0.01); */
 	}
+	XDestroyImage(ximage);
 	return 0;
 }
