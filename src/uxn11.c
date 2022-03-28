@@ -22,8 +22,8 @@ static Window window;
 
 static Device *devscreen, *devctrl, *devmouse;
 
-#define WIDTH 64 * 8
-#define HEIGHT 40 * 8
+#define WIDTH (64 * 8)
+#define HEIGHT (40 * 8)
 
 static int
 error(char *msg, const char *err)
