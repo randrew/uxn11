@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <sys/timerfd.h>
+#include <unistd.h>
+#include <poll.h>
 
 #include "uxn.h"
 #include "devices/system.h"
@@ -206,6 +209,9 @@ main(int argc, char **argv)
 {
 	Uxn u;
 	int i;
+	char expirations[8];
+	struct pollfd fds[2];
+	static const struct itimerspec screen_tspec = {{0, 16666666}, {0, 16666666}};
 	if(argc < 2)
 		return error("Usage", "uxncli game.rom args");
 	if(!start(&u, argv[1]))
@@ -218,13 +224,22 @@ main(int argc, char **argv)
 		while(*p) console_input(&u, *p++);
 		console_input(&u, '\n');
 	}
+	fds[0].fd = XConnectionNumber(display);
+	fds[1].fd = timerfd_create(CLOCK_MONOTONIC, 0);
+	timerfd_settime(fds[1].fd, 0, &screen_tspec, NULL);
+	fds[0].events = fds[1].events = POLLIN;
 	/* main loop */
 	while(1) {
-		processEvent();
-		uxn_eval(&u, GETVECTOR(devscreen));
+		if(poll(fds, 2, 1000) <= 0)
+			continue;
+		while(XPending(display))
+			processEvent();
+		if(poll(&fds[1], 1, 0)) {
+			read(fds[1].fd, expirations, 8);    /* Indicate we handled the timer */
+			uxn_eval(&u, GETVECTOR(devscreen)); /* Call the vector once, even if the timer fired multiple times */
+		}
 		if(uxn_screen.fg.changed || uxn_screen.bg.changed)
 			redraw();
-		/* sleep(0.01); */
 	}
 	XDestroyImage(ximage);
 	return 0;
