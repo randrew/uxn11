@@ -15,4 +15,4 @@ gcc -std=c89 -D_POSIX_C_SOURCE=199309L -DDEBUG -Wall -Wno-unknown-pragmas -Wpeda
 # gcc src/uxn.c src/devices/system.c src/devices/screen.c src/devices/controller.c src/devices/mouse.c src/devices/file.c src/devices/datetime.c src/uxn11.c -o bin/uxn11 -lX11
 
 echo "Running.."
-bin/uxn11 etc/mouse.rom
+bin/uxn11 ~/roms/left.rom # etc/mouse.rom

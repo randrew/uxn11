@@ -117,6 +117,22 @@ hide_cursor(void)
 #define XK_Control 0xffe3
 #define XK_Alt 0xffe9
 
+static Uint8
+get_button(KeySym sym)
+{
+	switch(sym) {
+	case XK_Up: return 0x10;
+	case XK_Down: return 0x20;
+	case XK_Left: return 0x40;
+	case XK_Right: return 0x80;
+	case XK_Control: return 0x01;
+	case XK_Alt: return 0x02;
+	case XK_Shift: return 0x04;
+	case XK_Home: return 0x08;
+	}
+	return 0x00;
+}
+
 static void
 processEvent(void)
 {
@@ -134,29 +150,18 @@ processEvent(void)
 	} break;
 	case KeyPress: {
 		XKeyPressedEvent *e = (XKeyPressedEvent *)&ev;
+		KeySym sym;
 		char buf[7];
-		if(e->keycode == XKeysymToKeycode(display, XK_Escape)) exit(0);
-		if(e->keycode == XKeysymToKeycode(display, XK_Up)) controller_down(devctrl, 0x10);
-		if(e->keycode == XKeysymToKeycode(display, XK_Down)) controller_down(devctrl, 0x20);
-		if(e->keycode == XKeysymToKeycode(display, XK_Left)) controller_down(devctrl, 0x40);
-		if(e->keycode == XKeysymToKeycode(display, XK_Right)) controller_down(devctrl, 0x80);
-		if(e->keycode == XKeysymToKeycode(display, XK_Control)) controller_down(devctrl, 0x01);
-		if(e->keycode == XKeysymToKeycode(display, XK_Alt)) controller_down(devctrl, 0x02);
-		if(e->keycode == XKeysymToKeycode(display, XK_Shift)) controller_down(devctrl, 0x04);
-		if(e->keycode == XKeysymToKeycode(display, XK_Home)) controller_down(devctrl, 0x08);
-		XLookupString(e, buf, 7, NULL, NULL);
-		controller_key(devctrl, buf[0]);
+		XLookupString(e, buf, 7, &sym, 0);
+		controller_down(devctrl, get_button(sym));
+		controller_key(devctrl, sym < 0x80 ? sym : buf[0]);
 	} break;
 	case KeyRelease: {
 		XKeyPressedEvent *e = (XKeyPressedEvent *)&ev;
-		if(e->keycode == XKeysymToKeycode(display, XK_Up)) controller_up(devctrl, 0x10);
-		if(e->keycode == XKeysymToKeycode(display, XK_Down)) controller_up(devctrl, 0x20);
-		if(e->keycode == XKeysymToKeycode(display, XK_Left)) controller_up(devctrl, 0x40);
-		if(e->keycode == XKeysymToKeycode(display, XK_Right)) controller_up(devctrl, 0x80);
-		if(e->keycode == XKeysymToKeycode(display, XK_Control)) controller_up(devctrl, 0x01);
-		if(e->keycode == XKeysymToKeycode(display, XK_Alt)) controller_up(devctrl, 0x02);
-		if(e->keycode == XKeysymToKeycode(display, XK_Shift)) controller_up(devctrl, 0x04);
-		if(e->keycode == XKeysymToKeycode(display, XK_Home)) controller_up(devctrl, 0x08);
+		KeySym sym;
+		char buf[7];
+		XLookupString(e, buf, 7, &sym, 0);
+		controller_up(devctrl, get_button(sym));
 	} break;
 	case ButtonPress: {
 		XButtonPressedEvent *e = (XButtonPressedEvent *)&ev;

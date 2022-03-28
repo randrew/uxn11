@@ -25,7 +25,7 @@ cc src/devices/datetime.c src/devices/system.c src/devices/file.c src/uxn.c -DND
 - `20` screen(partial/vector)
 - `30` audio(missing)
 - `70` midi(missing)
-- `80` controller(partial/key)
+- `80` controller
 - `90` mouse(partial/scroll)
 - `a0` file(missing)
 - `c0` datetime
