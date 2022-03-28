@@ -17,8 +17,6 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 WITH REGARD TO THIS SOFTWARE.
 */
 
-static Device *devfile0;
-
 static int
 error(char *msg, const char *err)
 {
@@ -42,18 +40,6 @@ console_deo(Device *d, Uint8 port)
 		fputc(d->dat[port], fd);
 		fflush(fd);
 	}
-}
-
-static void
-file_deo(Device *d, Uint8 port)
-{
-	file_i_deo(d - devfile0, d, port);
-}
-
-static Uint8
-file_dei(Device *d, Uint8 port)
-{
-	return file_i_dei(d - devfile0, d, port);
 }
 
 static Uint8
@@ -101,6 +87,12 @@ load(Uxn *u, char *filepath)
 	return 1;
 }
 
+int
+uxn_interrupt(void)
+{
+	return 1;
+}
+
 static int
 start(Uxn *u)
 {
@@ -116,7 +108,7 @@ start(Uxn *u)
 	/* empty    */ uxn_port(u, 0x7, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0x8, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0x9, nil_dei, nil_deo);
-	/* file0    */ devfile0 = uxn_port(u, 0xa, file_dei, file_deo);
+	/* file0    */ uxn_port(u, 0xa, file_dei, file_deo);
 	/* file1    */ uxn_port(u, 0xb, file_dei, file_deo);
 	/* datetime */ uxn_port(u, 0xc, datetime_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0xd, nil_dei, nil_deo);
