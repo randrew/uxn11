@@ -74,19 +74,6 @@ run(Uxn *u)
 	}
 }
 
-static int
-load(Uxn *u, char *filepath)
-{
-	FILE *f;
-	int r;
-	if(!(f = fopen(filepath, "rb"))) return 0;
-	r = fread(u->ram + PAGE_PROGRAM, 1, 0x10000 - PAGE_PROGRAM, f);
-	fclose(f);
-	if(r < 1) return 0;
-	fprintf(stderr, "Loaded %s\n", filepath);
-	return 1;
-}
-
 int
 uxn_interrupt(void)
 {
@@ -126,8 +113,9 @@ main(int argc, char **argv)
 		return error("Usage", "uxncli game.rom args");
 	if(!start(&u))
 		return error("Start", "Failed");
-	if(!load(&u, argv[1]))
+	if(!load_rom(&u, argv[1]))
 		return error("Load", "Failed");
+	fprintf(stderr, "Loaded %s\n", argv[1]);
 	if(!uxn_eval(&u, PAGE_PROGRAM))
 		return error("Init", "Failed");
 	for(i = 2; i < argc; i++) {

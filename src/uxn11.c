@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/keysymdef.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
 #include <poll.h>
@@ -70,19 +71,6 @@ nil_deo(Device *d, Uint8 port)
 	(void)port;
 }
 
-static int
-load(Uxn *u, char *filepath)
-{
-	FILE *f;
-	int r;
-	if(!(f = fopen(filepath, "rb"))) return 0;
-	r = fread(u->ram + PAGE_PROGRAM, 1, 0x10000 - PAGE_PROGRAM, f);
-	fclose(f);
-	if(r < 1) return 0;
-	fprintf(stderr, "Loaded %s\n", filepath);
-	return 1;
-}
-
 static void
 redraw(void)
 {
@@ -105,20 +93,18 @@ hide_cursor(void)
 	XFreePixmap(display, bitmap);
 }
 
-/* usr/include/X11/keysymdef.h */
-
 static Uint8
 get_button(KeySym sym)
 {
 	switch(sym) {
-	case 0xff52: return 0x10; /* Up */
-	case 0xff54: return 0x20; /* Down */
-	case 0xff51: return 0x40; /* Left */
-	case 0xff53: return 0x80; /* Right */
-	case 0xffe3: return 0x01; /* Control */
-	case 0xffe9: return 0x02; /* Alt */
-	case 0xffe1: return 0x04; /* Shift */
-	case 0xff50: return 0x08; /* Home */
+	case XK_Up: return 0x10;
+	case XK_Down: return 0x20;
+	case XK_Left: return 0x40;
+	case XK_Right: return 0x80;
+	case XK_Control_L: return 0x01;
+	case XK_Alt_L: return 0x02;
+	case XK_Shift_L: return 0x04;
+	case XK_Home: return 0x08;
 	}
 	return 0x00;
 }
@@ -171,8 +157,9 @@ start(Uxn *u, char *rom)
 {
 	if(!uxn_boot(u, (Uint8 *)calloc(0x10000, sizeof(Uint8))))
 		return error("Boot", "Failed");
-	if(!load(u, rom))
+	if(!load_rom(u, rom))
 		return error("Load", "Failed");
+	fprintf(stderr, "Loaded %s\n", rom);
 	/* system   */ uxn_port(u, 0x0, system_dei, system_deo);
 	/* console  */ uxn_port(u, 0x1, nil_dei, console_deo);
 	/* screen   */ devscreen = uxn_port(u, 0x2, screen_dei, screen_deo);

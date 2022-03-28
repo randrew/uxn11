@@ -215,3 +215,15 @@ file_dei(Device *d, Uint8 port)
 	}
 	return d->dat[port];
 }
+
+/* Boot */
+
+int
+load_rom(Uxn *u, char *filename)
+{
+	int ret;
+	file_init(uxn_file, filename, strlen(filename) + 1);
+	ret = file_read(uxn_file, &u->ram[PAGE_PROGRAM], 0x10000 - PAGE_PROGRAM);
+	reset(uxn_file);
+	return ret;
+}
