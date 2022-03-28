@@ -105,30 +105,20 @@ hide_cursor(void)
 	XFreePixmap(display, bitmap);
 }
 
-/* /usr/include/X11/keysymdef.h */
-
-#define XK_Escape 0xff1b
-#define XK_Left 0xff51
-#define XK_Up 0xff52
-#define XK_Right 0xff53
-#define XK_Down 0xff54
-#define XK_Home 0xff50
-#define XK_Shift 0xffe1
-#define XK_Control 0xffe3
-#define XK_Alt 0xffe9
+/* usr/include/X11/keysymdef.h */
 
 static Uint8
 get_button(KeySym sym)
 {
 	switch(sym) {
-	case XK_Up: return 0x10;
-	case XK_Down: return 0x20;
-	case XK_Left: return 0x40;
-	case XK_Right: return 0x80;
-	case XK_Control: return 0x01;
-	case XK_Alt: return 0x02;
-	case XK_Shift: return 0x04;
-	case XK_Home: return 0x08;
+	case 0xff52: return 0x10; /* Up */
+	case 0xff54: return 0x20; /* Down */
+	case 0xff51: return 0x40; /* Left */
+	case 0xff53: return 0x80; /* Right */
+	case 0xffe3: return 0x01; /* Control */
+	case 0xffe9: return 0x02; /* Alt */
+	case 0xffe1: return 0x04; /* Shift */
+	case 0xff50: return 0x08; /* Home */
 	}
 	return 0x00;
 }
@@ -149,18 +139,16 @@ processEvent(void)
 		exit(0);
 	} break;
 	case KeyPress: {
-		XKeyPressedEvent *e = (XKeyPressedEvent *)&ev;
 		KeySym sym;
 		char buf[7];
-		XLookupString(e, buf, 7, &sym, 0);
+		XLookupString((XKeyPressedEvent *)&ev, buf, 7, &sym, 0);
 		controller_down(devctrl, get_button(sym));
 		controller_key(devctrl, sym < 0x80 ? sym : buf[0]);
 	} break;
 	case KeyRelease: {
-		XKeyPressedEvent *e = (XKeyPressedEvent *)&ev;
 		KeySym sym;
 		char buf[7];
-		XLookupString(e, buf, 7, &sym, 0);
+		XLookupString((XKeyPressedEvent *)&ev, buf, 7, &sym, 0);
 		controller_up(devctrl, get_button(sym));
 	} break;
 	case ButtonPress: {
@@ -197,10 +185,10 @@ start(Uxn *u, char *rom)
 	/* mouse    */ devmouse = uxn_port(u, 0x9, nil_dei, nil_deo);
 	/* file0    */ uxn_port(u, 0xa, file_dei, file_deo);
 	/* file1    */ uxn_port(u, 0xb, file_dei, file_deo);
-	/* empty    */ uxn_port(u, 0xc, datetime_dei, nil_deo);
+	/* datetime */ uxn_port(u, 0xc, datetime_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0xd, nil_dei, nil_deo);
-	/* empty    */ uxn_port(u, 0xe, nil_dei, nil_deo);
-	/* empty    */ uxn_port(u, 0xf, nil_dei, nil_deo);
+	/* reserved */ uxn_port(u, 0xe, nil_dei, nil_deo);
+	/* reserved */ uxn_port(u, 0xf, nil_dei, nil_deo);
 	screen_resize(&uxn_screen, WIDTH, HEIGHT);
 	if(!uxn_eval(u, PAGE_PROGRAM))
 		return error("Boot", "Failed to start rom.");
