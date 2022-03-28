@@ -90,6 +90,21 @@ redraw(void)
 	XPutImage(display, window, DefaultGC(display, 0), ximage, 0, 0, 0, 0, uxn_screen.width, uxn_screen.height);
 }
 
+static void
+hide_cursor(void)
+{
+	Cursor blank;
+	Pixmap bitmap;
+	XColor black;
+	static char empty[] = {0, 0, 0, 0, 0, 0, 0, 0};
+	black.red = black.green = black.blue = 0;
+	bitmap = XCreateBitmapFromData(display, window, empty, 8, 8);
+	blank = XCreatePixmapCursor(display, bitmap, bitmap, &black, &black, 0, 0);
+	XDefineCursor(display, window, blank);
+	XFreeCursor(display, blank);
+	XFreePixmap(display, bitmap);
+}
+
 /* /usr/include/X11/keysymdef.h */
 
 #define XK_Escape 0xff1b
@@ -145,11 +160,11 @@ processEvent(void)
 	} break;
 	case ButtonPress: {
 		XButtonPressedEvent *e = (XButtonPressedEvent *)&ev;
-		mouse_down(devmouse, 0x1 << e->button - 1);
+		mouse_down(devmouse, 0x1 << (e->button - 1));
 	} break;
 	case ButtonRelease: {
 		XButtonPressedEvent *e = (XButtonPressedEvent *)&ev;
-		mouse_up(devmouse, 0x1 << e->button - 1);
+		mouse_up(devmouse, 0x1 << (e->button - 1));
 	} break;
 	case MotionNotify: {
 		XMotionEvent *e = (XMotionEvent *)&ev;
@@ -201,6 +216,7 @@ init(void)
 	XSetWMProtocols(display, window, &wmDelete, 1);
 	XMapWindow(display, window);
 	ximage = XCreateImage(display, visual, DefaultDepth(display, DefaultScreen(display)), ZPixmap, 0, (char *)uxn_screen.pixels, uxn_screen.width, uxn_screen.height, 32, 0);
+	hide_cursor();
 	return 1;
 }
 
