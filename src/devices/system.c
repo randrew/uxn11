@@ -37,8 +37,8 @@ system_print(Stack *s, char *name)
 void
 system_inspect(Uxn *u)
 {
-	system_print(&u->wst, "wst");
-	system_print(&u->rst, "rst");
+	system_print(u->wst, "wst");
+	system_print(u->rst, "rst");
 }
 
 int
@@ -51,22 +51,12 @@ uxn_halt(Uxn *u, Uint8 error, Uint16 addr)
 
 /* IO */
 
-Uint8
-system_dei(Device *d, Uint8 port)
-{
-	switch(port) {
-	case 0x2: return d->u->wst.ptr;
-	case 0x3: return d->u->rst.ptr;
-	default: return d->dat[port];
-	}
-}
-
 void
 system_deo(Device *d, Uint8 port)
 {
 	switch(port) {
-	case 0x2: d->u->wst.ptr = d->dat[port]; break;
-	case 0x3: d->u->rst.ptr = d->dat[port]; break;
+	case 0x2: d->u->wst = (Stack*)(d->u->ram + (d->dat[port] ? (d->dat[port] * 0x100) : 0x10000)); break;
+	case 0x3: d->u->rst = (Stack*)(d->u->ram + (d->dat[port] ? (d->dat[port] * 0x100) : 0x10100)); break;
 	case 0xe: system_inspect(d->u); break;
 	default: system_deo_special(d, port);
 	}

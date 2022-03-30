@@ -38,9 +38,9 @@ uxn_eval(Uxn *u, Uint16 pc)
 	while((instr = u->ram[pc++])) {
 		/* Return Mode */
 		if(instr & 0x40) {
-			src = &u->rst; dst = &u->wst;
+			src = u->rst; dst = u->wst;
 		} else {
-			src = &u->wst; dst = &u->rst;
+			src = u->wst; dst = u->rst;
 		}
 		/* Keep Mode */
 		if(instr & 0x80) {
@@ -110,6 +110,8 @@ uxn_boot(Uxn *u, Uint8 *ram)
 	for(i = 0; i < sizeof(*u); i++)
 		cptr[i] = 0x00;
 	u->ram = ram;
+	u->wst = (Stack*)(ram + 0x10000);
+	u->rst = (Stack*)(ram + 0x10100);
 	return 1;
 }
 

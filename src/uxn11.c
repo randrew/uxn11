@@ -155,12 +155,12 @@ processEvent(void)
 static int
 start(Uxn *u, char *rom)
 {
-	if(!uxn_boot(u, (Uint8 *)calloc(0x10000, sizeof(Uint8))))
+	if(!uxn_boot(u, (Uint8 *)calloc(0x10200, sizeof(Uint8))))
 		return error("Boot", "Failed");
 	if(!load_rom(u, rom))
 		return error("Load", "Failed");
 	fprintf(stderr, "Loaded %s\n", rom);
-	/* system   */ uxn_port(u, 0x0, system_dei, system_deo);
+	/* system   */ uxn_port(u, 0x0, nil_dei, system_deo);
 	/* console  */ uxn_port(u, 0x1, nil_dei, console_deo);
 	/* screen   */ devscreen = uxn_port(u, 0x2, screen_dei, screen_deo);
 	/* empty    */ uxn_port(u, 0x3, nil_dei, nil_deo);

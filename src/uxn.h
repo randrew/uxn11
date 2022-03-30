@@ -26,7 +26,7 @@ typedef unsigned int Uint32;
 /* clang-format on */
 
 typedef struct {
-	Uint8 ptr, dat[255];
+	Uint8 dat[255],ptr;
 } Stack;
 
 typedef struct Device {
@@ -38,7 +38,7 @@ typedef struct Device {
 
 typedef struct Uxn {
 	Uint8 *ram;
-	Stack wst, rst;
+	Stack *wst, *rst;
 	Device dev[16];
 } Uxn;
 

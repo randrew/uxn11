@@ -2,6 +2,22 @@
 
 An emulator for the [Uxn stack-machine](https://wiki.xxiivv.com/site/uxn.html), written in ANSI C. 
 
+## Uxn11/System
+
+This emulator's system device supports changing a stack's location to a page of memory. The default memory mapping is as follows:
+
+- `0000-ffff`, as **RAM**.
+- `10000-100ff`, as **working stack**.
+- `10100-101ff`, as **return stack**.
+
+To use the last page of ram(`0xff00`) to host the working stack:
+
+```
+#ff .System/wst DEO
+```
+
+The stack mapping is 254 bytes of data, a byte for the pointer and a byte for an error code.
+
 ## Graphical
 
 All you need is X11.
