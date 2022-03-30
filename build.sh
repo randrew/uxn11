@@ -20,4 +20,4 @@ else
 fi
 
 echo "Running.."
-bin/uxn11 ~/roms/left.rom # etc/mouse.rom
+uxnasm etc/repl.tal bin/repl.rom && bin/uxn11 bin/repl.rom
