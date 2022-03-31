@@ -1,4 +1,4 @@
-( Test )
+( REPL )
 
 |00 @System &vector $2 &wst $1 &rst $1 &pad $4 &r $2 &g $2 &b $2
 |10 @Console &vector $2 &read $1 &pad $5 &write $1
@@ -10,20 +10,17 @@
 |0000
 
 	@input $80
+	@token $40
+	@p &ptr $2 &len $2
 
 |0100 ( -> )
 
 	( theme )
-	#07a6 .System/r DEO2
-	#075c .System/g DEO2
-	#07ca .System/b DEO2
+	#f0f7 .System/r DEO2
+	#50f7 .System/g DEO2
+	#60f7 .System/b DEO2
 	( vectors )
 	;on-button .Controller/vector DEO2
-	( move stacks into ram )
-	#fe .System/wst DEO
-	#ff .System/rst DEO
-	( put something in the stack )
-	#1234 #abcd
 	( draw )
 	#fe00 ;draw-stack JSR2
 
@@ -31,43 +28,137 @@ BRK
 
 @on-button ( -> )
 
-	#00 ;draw-input JSR2
 	.Controller/key DEI
-	[ #08 ] NEQk NIP ,&no-pop JCN ;input ;spop JSR2 &no-pop
-	[ #0d ] NEQk NIP ,&no-load JCN ;send JSR2 &no-load
-	DUP #20 LTH ,&end JCN
-	DUP #7e GTH ,&end JCN
-	;input ;slen JSR2 NIP #7f EQU ,&no-push JCN
-		DUP ;input ROT ;sput JSR2
-		&no-push
+	[ #0d ] EQUk NIP ,&validate JCN
+	[ #08 ] EQUk NIP ,&erase JCN
+	[ #20 ] LTHk NIP ,&end JCN
+	[ #7e ] GTHk NIP ,&end JCN
+	;input ;slen JSR2 NIP #80 LTH ,&append JCN
 	&end
 	POP
-	#01 ;draw-input JSR2
 
 BRK
-
-@send ( -- )
-
-	;input ;print-str JSR2 #0a18 DEO
-	;input ;parse JSR2
-	;input #0080 ;mclr JSR2
-	#01 ;draw-input JSR2
-
-JMP2r
+	&append ( char -> ) #00 ;draw-input JSR2 ;input ;sput JSR2 #01 ;draw-input JSR2 BRK
+	&erase ( char -> ) #00 ;draw-input JSR2 ;input ;spop JSR2 #01 ;draw-input JSR2 BRK
+	&validate ( char -> ) #00 ;draw-input JSR2 ;input ;sput JSR2 ;input ;parse JSR2 ;input #0080 ;mclr JSR2 BRK
 
 @parse ( addr* -- )
 
-	LDAk LIT '# NEQ ,&no-lit JCN 
-		
-
-	&no-lit
-
+	&while
+		LDAk #20 GTH ,&no-space JCN 
+			;do-token JSR2
+			,&continue JMP
+			&no-space
+		LDAk ;token ;sput JSR2
+		&continue
+		INC2 LDAk ,&while JCN
 	POP2
 
-	#2222
+	( set return )
+	;&end ;write-litshort JSR2 #2c ;write-byte JSR2
+	( time to evaluate program )
+	( borrow wst ) #fe .System/wst DEO
+	;dst JMP2
+	&end
+	( released wst ) #00 .System/wst DEO
 	#fe00 ;draw-stack JSR2
+	
+	;dst .p/len LDZ2 #0004 ADD2 ;mclr JSR2
+	#0000 .p/len STZ2
+	#0000 .p/ptr STZ2
 
 JMP2r
+
+@do-token ( -- )
+
+	;token LDAk LIT '# NEQ ,&no-lithex JCN
+		DUP2 INC2 ;do-lithex JSR2 ,&end JMP
+		&no-lithex
+	DUP2 ;is-opcode JSR2 #00 EQU ,&no-opcode JCN
+		DUP2 ;find-opcode JSR2 ;write-byte JSR2
+		&no-opcode
+	&end
+	POP2
+
+	;token #0040 ;mclr JSR2
+
+	;draw-program JSR2
+
+JMP2r
+
+@is-opcode ( string* -- flag )
+
+	DUP2 ;opcodes/brk ,scmp3 JSR ,find-opcode/on-brk JCN
+
+@find-opcode ( name* -- byte )
+
+	STH2
+	#2000
+	&loop
+		#00 OVR #03 MUL ;opcodes ADD2 STH2kr ,scmp3 JSR ,&on-found JCN
+		INC GTHk ,&loop JCN
+	POP2 POP2r #00
+
+JMP2r
+	&on-found NIP STH2r ,find-mode JSR ADD JMP2r
+	&on-brk POP2 #01 JMP2r
+
+@find-mode ( mode* -- byte )
+
+	LITr 00
+	;opcodes OVR2 ,scmp3 JSR #70 SFT STH ADDr
+	INC2 INC2 INC2
+	LDAk #00 EQU ,&end JCN
+	&while
+		LDAk LIT '2 EQU #50 SFT STH ADDr
+		LDAk LIT 'r EQU #60 SFT STH ADDr
+		LDAk LIT 'k EQU #70 SFT STH ADDr
+		INC2 LDAk ,&while JCN
+	&end
+	POP2 STHr
+
+JMP2r
+
+@scmp3 ( a[3]* b[3]* -- flag )
+
+	LDA2k STH2 INC2 INC2 SWP2
+	LDA2k STH2 INC2 INC2 EQU2r
+	LDA STH LDA STH EQUr
+	ANDr STHr
+
+JMP2r
+
+@do-lithex ( t* -- )
+
+	DUP2 ;slen JSR2 #0004 EQU2 ,&on-short JCN
+	DUP2 ;slen JSR2 #0002 EQU2 ,&on-byte JCN
+
+;err/lithx ;print-err JMP2
+
+	&on-short ;sshort JSR2 ;write-litshort JMP2
+	&on-byte ;sbyte JSR2 ;write-litbyte JMP2
+
+@write-litbyte ( byte -- )
+
+	( LITk ) #80 SWP ,write-short JMP
+
+@write-litshort ( short* -- )
+
+	( LIT2k ) #a0 ,write-byte JSR
+
+@write-short ( short -- )
+
+	SWP ,write-byte JSR
+
+@write-byte ( byte -- )
+
+	;dst .p/ptr LDZ2 STH2k ADD2 STA
+	INC2r STH2kr .p/ptr STZ2
+	STH2r .p/len STZ2
+
+JMP2r
+
+( drawing )
 
 @draw-input ( color -- )
 
@@ -84,7 +175,6 @@ JMP2r
 	( position )
 	#0020 .Screen/x DEO2
 	#0020 .Screen/y DEO2
-
 	STH2k
 	#00ff ADD2 LDA ,&length STR
 	#01 .Screen/auto DEO
@@ -102,6 +192,34 @@ JMP2r
 		.Screen/x DEI2k #0002 ADD2 ROT DEO2
 		INC DUP ,&loop JCN
 	POP
+	POP2r
+
+JMP2r
+
+@draw-program ( -- )
+
+	#0020 .Screen/x DEO2
+	.Screen/height DEI2 #0020 SUB2 .Screen/y DEO2
+	#10 ;dst ;draw-memory JSR2
+
+JMP2r
+
+@draw-memory ( length addr* -- )
+
+	STH2
+	#01 .Screen/auto DEO
+	.Screen/x DEI2 ,&anchor STR2
+	#00
+	&loop
+		( linebreak )
+		DUP #0f AND ,&skip JCN
+			[ LIT2 &anchor $2 ] .Screen/x DEO2
+			.Screen/y DEI2k #000a ADD2 ROT DEO2
+			&skip
+		( byte ) #00 OVR STH2kr ADD2 LDA #01 ;draw-byte JSR2
+		.Screen/x DEI2k #0002 ADD2 ROT DEO2
+		INC GTHk ,&loop JCN
+	POP2
 	POP2r
 
 JMP2r
@@ -136,6 +254,8 @@ JMP2r
 
 JMP2r
 
+( utils )
+
 @scat ( src* dst* -- )
 
 	DUP2 ,slen JSR ADD2
@@ -164,9 +284,9 @@ JMP2r
 
 JMP2r
 
-@sput ( str* char -- )
+@sput ( char str* -- )
 
-	ROT ROT ,scap JSR STA
+	,scap JSR STA
 
 JMP2r
 
@@ -177,6 +297,28 @@ JMP2r
 	#00 ROT ROT ,scap JSR #0001 SUB2 STA
 
 JMP2r
+
+@shex ( str* -- short* )
+
+	LIT2r 0000
+	&while
+		LITr 40 SFT2r
+		LITr 00
+		LDAk ,chex JSR STH ADD2r
+		INC2 LDAk ,&while JCN
+	POP2 STH2r
+
+JMP2r
+
+@chex ( char -- value )
+
+	DUP #2f GTH OVR #3a LTH AND ,&number JCN
+	DUP #60 GTH OVR #67 LTH AND ,&lc JCN
+		POP #00
+
+JMP2r
+	&number #30 SUB JMP2r
+	&lc #57 SUB JMP2r
 
 @mclr ( addr* len* -- )
 
@@ -208,6 +350,26 @@ JMP2r
 
 JMP2r
 
+@sshort ( str* -- short* )
+
+	INC2k INC2 ,sbyte JSR STH
+	,sbyte JSR STHr
+
+JMP2r
+
+@sbyte ( str* -- byte )
+
+	LDAk ,chex JSR STH
+	INC2 LDA ,chex JSR
+	STHr #40 SFT ADD
+
+JMP2r
+
+@print-err ( token* err* -- )
+
+	LIT '! .Console/write DEO
+	SWP2 ,print-str JSR #2018 DEO
+
 @print-str ( str* -- )
 
 	&while
@@ -216,6 +378,18 @@ JMP2r
 	POP2
 
 JMP2r
+
+( assets )
+
+@opcodes
+	"LIT "INC "POP "DUP "NIP "SWP "OVR "ROT
+	"EQU "NEQ "GTH "LTH "JMP "JCN "JSR "STH
+	"LDZ "STZ "LDR "STR "LDA "STA "DEI "DEO
+	"ADD "SUB "MUL "DIV "AND "ORA "EOR "SFT
+	&brk "BRK
+
+@err
+	&lithx "LITHX $1 &label "LABEL $1 &token "TOKEN $1 &reslv "RESLV $1
 
 @font ( acorn8 )
 	0000 0000 0000 0000 1818 1818 1800 1800
@@ -282,3 +456,5 @@ JMP2r
 	1c30 307c 3030 30ff 1800 3818 1818 3cff
 	0000 7c66 6666 66ff 0000 3c66 7e60 3cff
 	0606 3e66 6666 3eff 0000 0000 0000 0000
+
+@dst
