@@ -5,13 +5,14 @@
 |20 @Screen &vector $2 &width $2 &height $2 &auto $1 &pad $1 &x $2 &y $2 &addr $2 &pixel $1 &sprite $1
 |80 @Controller &vector $2 &button  $1 &key $1
 |90 @Mouse &vector $2 &x $2 &y $2 &state $1 &chord $1
-|a0 @File &vector $2 &success $2 &offset $2 &pad $2 &name $2 &length $2 &load $2 &save $2
+|a0 @File &vector $2 &success $2 &stat $2 &delete $1 &append $1 &name $2 &length $2 &read $2 &write $2
 
 |0000
 
 	@input $80
 	@token $40
 	@p &ptr $2 &len $2
+	@l &ptr $2
 
 |0100 ( -> )
 
@@ -22,9 +23,20 @@
 	#15 .Screen/auto DEO
 	( vectors )
 	;on-button .Controller/vector DEO2
+
+	( load prefabs )
+	;prefabs/play-note-txt ;add-label JSR2
+	;prefabs/draw-line-txt ;add-label JSR2
+	;prefabs/list-files-txt ;add-label JSR2
+	;prefabs/load-file-txt ;add-label JSR2
+
 	( draw )
 	#01 ;draw-input JSR2
 	#01 ;draw-stack JSR2
+	#01 ;draw-program JSR2
+	#01 ;draw-labels JSR2
+
+	#010e DEO
 
 BRK
 
@@ -130,6 +142,21 @@ JMP2r
 
 JMP2r
 
+@add-label ( label* -- )
+
+	#aaaa .l/ptr LDZ2 ;labels ADD2 STA2
+
+	.l/ptr LDZ2k INC2 INC2 ROT STZ2
+
+	DUP2
+		.l/ptr LDZ2 ;labels ADD2 ;scpy JSR2
+		;slen JSR2 INC2 STH2
+
+	.l/ptr LDZ2k STH2r ADD2 ROT STZ2
+	#0a18 DEO
+
+JMP2r
+
 @do-lithex ( t* -- )
 
 	DUP2 ;slen JSR2 #0004 EQU2 ,&on-short JCN
@@ -161,6 +188,25 @@ JMP2r
 JMP2r
 
 ( drawing )
+
+@draw-labels ( color -- )
+
+	POP
+	#0020 .Screen/x DEO2
+	#00d0 .Screen/y DEO2
+	;symbols-txt #02 ;draw-str JSR2
+	.Screen/y DEI2k #0010 ADD2 ROT DEO2
+
+	;labels
+	&while
+		LDA2k #03 ;draw-short JSR2
+		.Screen/x DEI2k #0008 ADD2 ROT DEO2
+		DUP2 INC2 INC2 #01 ;draw-str JSR2
+		.Screen/x DEI2k #0008 ADD2 ROT DEO2
+		;scap JSR2 INC2 LDA2k #0000 NEQ2 ,&while JCN
+	POP2
+
+JMP2r
 
 @draw-input ( color -- )
 
@@ -275,6 +321,21 @@ JMP2r
 
 JMP2r
 
+@scat ( src* dst* -- )
+
+	DUP2 ,slen JSR ADD2
+
+@scpy ( src* dst* -- )
+	
+	STH2
+	&while
+		LDAk STH2kr STA INC2r
+		INC2 LDAk ,&while JCN
+	POP2
+	#00 STH2r STA
+
+JMP2r
+
 @chex ( char -- value )
 
 	DUP #2f GTH OVR #3a LTH AND ,&number JCN
@@ -337,6 +398,7 @@ JMP2r
 @prompt-txt "Do 20 $1
 @stack-txt "Stack 20 $1
 @program-txt "Program 20 $1
+@symbols-txt "Symbols 20 $1
 
 @opcodes
 	"LIT "INC "POP "DUP "NIP "SWP "OVR "ROT
@@ -347,6 +409,14 @@ JMP2r
 
 @err
 	&lithx "LITHX $1 &label "LABEL $1 &token "TOKEN $1 &reslv "RESLV $1
+
+( prefabs )
+
+@prefabs
+	&play-note-txt "play-note $1
+	&draw-line-txt "draw-line $1
+	&list-files-txt "list-files $1
+	&load-file-txt "load-file $1
 
 @flowers-icn ( by elioat )
 	0000 0020 1408 0810 40a0 4205 0200 40a0
@@ -460,4 +530,8 @@ JMP2r
 	0000 0060 1010 1010 0810 1010 1060 0000
 	0000 0060 920c 0000 0000 0000 0000 0000
 
-@dst
+@dst $1000
+
+( addr* label[length] )
+
+@labels
