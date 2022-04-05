@@ -168,6 +168,19 @@ processEvent(void)
 	}
 }
 
+static Uint8
+nil_dei(Device *d, Uint8 port)
+{
+	return d->dat[port];
+}
+
+static void
+nil_deo(Device *d, Uint8 port)
+{
+	(void)d;
+	(void)port;
+}
+
 static int
 start(Uxn *u, char *rom)
 {
@@ -178,6 +191,24 @@ start(Uxn *u, char *rom)
 	fprintf(stderr, "Loaded %s\n", rom);
 	u->dei = uxn11_dei;
 	u->deo = uxn11_deo;
+
+	/* system   */ uxn_port(u, 0x0, nil_dei, system_deo);
+	/* console  */ uxn_port(u, 0x1, nil_dei, console_deo);
+	/* screen   */ devscreen = uxn_port(u, 0x2, screen_dei, screen_deo);
+	/* empty    */ uxn_port(u, 0x3, nil_dei, nil_deo);
+	/* empty    */ uxn_port(u, 0x4, nil_dei, nil_deo);
+	/* empty    */ uxn_port(u, 0x5, nil_dei, nil_deo);
+	/* empty    */ uxn_port(u, 0x6, nil_dei, nil_deo);
+	/* empty    */ uxn_port(u, 0x7, nil_dei, nil_deo);
+	/* control  */ devctrl = uxn_port(u, 0x8, nil_dei, nil_deo);
+	/* mouse    */ devmouse = uxn_port(u, 0x9, nil_dei, nil_deo);
+	/* file0    */ uxn_port(u, 0xa, file_dei, file_deo);
+	/* file1    */ uxn_port(u, 0xb, file_dei, file_deo);
+	/* datetime */ uxn_port(u, 0xc, datetime_dei, nil_deo);
+	/* empty    */ uxn_port(u, 0xd, nil_dei, nil_deo);
+	/* reserved */ uxn_port(u, 0xe, nil_dei, nil_deo);
+	/* reserved */ uxn_port(u, 0xf, nil_dei, nil_deo);
+
 	screen_resize(&uxn_screen, WIDTH, HEIGHT);
 	if(!uxn_eval(u, PAGE_PROGRAM))
 		return error("Boot", "Failed to start rom.");
