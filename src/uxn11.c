@@ -131,6 +131,8 @@ get_button(KeySym sym)
 	return 0x00;
 }
 
+#define DEV_MOUSE 0x9
+
 static void
 processEvent(Emulator *m)
 {
@@ -161,15 +163,15 @@ processEvent(Emulator *m)
 	} break;
 	case ButtonPress: {
 		XButtonPressedEvent *e = (XButtonPressedEvent *)&ev;
-		mouse_down(m->devmouse, 0x1 << (e->button - 1));
+		mouse_down(&m->u, m->u.dev[DEV_MOUSE].dat, 0x1 << (e->button - 1));
 	} break;
 	case ButtonRelease: {
 		XButtonPressedEvent *e = (XButtonPressedEvent *)&ev;
-		mouse_up(m->devmouse, 0x1 << (e->button - 1));
+		mouse_up(&m->u, m->u.dev[DEV_MOUSE].dat, 0x1 << (e->button - 1));
 	} break;
 	case MotionNotify: {
 		XMotionEvent *e = (XMotionEvent *)&ev;
-		mouse_pos(m->devmouse, e->x, e->y);
+		mouse_pos(&m->u, m->u.dev[DEV_MOUSE].dat, e->x, e->y);
 	} break;
 	}
 }

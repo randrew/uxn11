@@ -13,33 +13,33 @@ WITH REGARD TO THIS SOFTWARE.
 */
 
 void
-mouse_down(Device *d, Uint8 mask)
+mouse_down(Uxn* u, Uint8* dat, Uint8 mask)
 {
-	d->dat[6] |= mask;
-	uxn_eval(d->u, GETVECTOR(d));
+	dat[6] |= mask;
+	uxn_eval(u, NEWGETVECTOR(dat));
 }
 
 void
-mouse_up(Device *d, Uint8 mask)
+mouse_up(Uxn* u, Uint8* dat, Uint8 mask)
 {
-	d->dat[6] &= (~mask);
-	uxn_eval(d->u, GETVECTOR(d));
+	dat[6] &= (~mask);
+	uxn_eval(u, NEWGETVECTOR(dat));
 }
 
 void
-mouse_pos(Device *d, Uint16 x, Uint16 y)
+mouse_pos(Uxn* u, Uint8* dat, Uint16 x, Uint16 y)
 {
-	DEVPOKE16(0x2, x);
-	DEVPOKE16(0x4, y);
-	uxn_eval(d->u, GETVECTOR(d));
+	NEWDEVPOKE16(dat, 0x2, x);
+	NEWDEVPOKE16(dat, 0x4, y);
+	uxn_eval(u, NEWGETVECTOR(dat));
 }
 
 void
-mouse_scroll(Device *d, Uint16 x, Uint16 y)
+mouse_scroll(Uxn* u, Uint8* dat, Uint16 x, Uint16 y)
 {
-	DEVPOKE16(0xa, x);
-	DEVPOKE16(0xc, -y);
-	uxn_eval(d->u, GETVECTOR(d));
-	DEVPOKE16(0xa, 0);
-	DEVPOKE16(0xc, 0);
+	NEWDEVPOKE16(dat, 0xa, x);
+	NEWDEVPOKE16(dat, 0xc, -y);
+	uxn_eval(u, NEWGETVECTOR(dat));
+	NEWDEVPOKE16(dat, 0xa, 0);
+	NEWDEVPOKE16(dat, 0xc, 0);
 }
