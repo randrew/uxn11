@@ -12,5 +12,5 @@ WITH REGARD TO THIS SOFTWARE.
 #include "../uxn.h"
 
 void system_inspect(Uxn *u);
-void system_deo(Uxn *u, Device *d, Uint8 port);
-void system_deo_special(Uxn *u, Device *d, Uint8 port);
+void system_deo(Uxn *u, Uint8 *dat, Uint8 port);
+void system_deo_special(Uxn *u, Uint8 *dat, Uint8 port);
