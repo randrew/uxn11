@@ -18,10 +18,12 @@
 
 #define DEV_CONTROL 0x8
 #define DEV_MOUSE 0x9
+#define DEV_FILE0 0xa
 
 typedef struct Emulator {
 	Uxn u;
 	UxnScreen screen;
+	UxnFile *files[2];
 	XImage *ximage;
 	Display *display;
 	Visual *visual;
@@ -69,11 +71,12 @@ uxn11_dei(Uxn *u, Uint8 addr)
 {
 	Emulator *m = (Emulator *)u;
 	Uint8 p = addr & 0x0f;
+	int dev_id = addr >> 4;
 	Device *d = &u->dev[addr >> 4];
 	switch(addr & 0xf0) {
 	case 0x20: screen_dei(&m->screen, d->dat, p); break;
-	case 0xa0: file_dei(d, p); break;
-	case 0xb0: file_dei(d, p); break;
+	case 0xa0: file_dei(u, d->dat, m->files[dev_id - DEV_FILE0], p); break;
+	case 0xb0: file_dei(u, d->dat, m->files[dev_id - DEV_FILE0], p); break;
 	case 0xc0: datetime_dei(d, p); break;
 	}
 	return d->dat[p];
@@ -84,14 +87,15 @@ uxn11_deo(Uxn *u, Uint8 addr, Uint8 v)
 {
 	Emulator *m = (Emulator *)u;
 	Uint8 p = addr & 0x0f;
+	int dev_id = addr >> 4;
 	Device *d = &u->dev[addr >> 4];
 	d->dat[p] = v;
 	switch(addr & 0xf0) {
 	case 0x00: system_deo(u, d, p); break;
 	case 0x10: console_deo(d, p); break;
 	case 0x20: screen_deo(u, &m->screen, d->dat, p); break;
-	case 0xa0: file_deo(d, p); break;
-	case 0xb0: file_deo(d, p); break;
+	case 0xa0: file_deo(u, d->dat, m->files[dev_id - DEV_FILE0], p); break;
+	case 0xb0: file_deo(u, d->dat, m->files[dev_id - DEV_FILE0], p); break;
 	}
 }
 
@@ -238,6 +242,7 @@ main(int argc, char **argv)
 	struct pollfd fds[2];
 	static const struct itimerspec screen_tspec = {{0, 16666666}, {0, 16666666}};
 	memset(&m, 0, sizeof m); /* May not be necessary */
+	for(i = 0; i < 2; i++) m.files[i] = file_alloc();
 	if(argc < 2)
 		return error("Usage", "uxncli game.rom args");
 	if(!start(&m, argv[1]))
@@ -261,12 +266,13 @@ main(int argc, char **argv)
 		while(XPending(m.display))
 			processEvent(&m);
 		if(poll(&fds[1], 1, 0)) {
-			read(fds[1].fd, expirations, 8);    /* Indicate we handled the timer */
+			read(fds[1].fd, expirations, 8);                /* Indicate we handled the timer */
 			uxn_eval(&m.u, NEWGETVECTOR(m.u.dev[0x2].dat)); /* Call the vector once, even if the timer fired multiple times */
 		}
 		if(m.screen.fg.changed || m.screen.bg.changed)
 			redraw(&m);
 	}
 	XDestroyImage(m.ximage);
+	for(i = 0; i < 2; i++) file_free(m.files[i]);
 	return 0;
 }

@@ -12,9 +12,10 @@ WITH REGARD TO THIS SOFTWARE.
 
 #include "../uxn.h"
 
-#define POLYFILEY 2
-#define DEV_FILE0 0xa
+typedef struct UxnFile UxnFile;
 
-void file_deo(Device *d, Uint8 port);
-Uint8 file_dei(Device *d, Uint8 port);
+UxnFile *file_alloc(void);
+void file_free(UxnFile *file);
+void file_deo(Uxn *u, Uint8 *dat, UxnFile *c, Uint8 port);
+Uint8 file_dei(Uxn *u, Uint8 *dat, UxnFile *c, Uint8 port);
 int load_rom(Uxn *u, char *filename);

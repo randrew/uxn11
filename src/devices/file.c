@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <dirent.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -18,7 +19,7 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 WITH REGARD TO THIS SOFTWARE.
 */
 
-typedef struct {
+struct UxnFile {
 	FILE *f;
 	DIR *dir;
 	char current_filename[4096];
@@ -27,9 +28,7 @@ typedef struct {
 		FILE_READ,
 		FILE_WRITE,
 		DIR_READ } state;
-} UxnFile;
-
-static UxnFile uxn_file[POLYFILEY];
+};
 
 static void
 reset(UxnFile *c)
@@ -150,69 +149,74 @@ file_delete(UxnFile *c)
 	return unlink(c->current_filename);
 }
 
-static UxnFile *
-file_instance(Device *d)
+UxnFile *
+file_alloc(void)
 {
-	return &uxn_file[d - &d->u->dev[DEV_FILE0]];
+	return calloc(1, sizeof(UxnFile));
+}
+
+void
+file_free(UxnFile *file)
+{
+	reset(file);
+	free(file);
 }
 
 /* IO */
 
 void
-file_deo(Device *d, Uint8 port)
+file_deo(Uxn *u, Uint8 *dat, UxnFile *c, Uint8 port)
 {
-	UxnFile *c = file_instance(d);
 	Uint16 addr, len, res;
 	switch(port) {
 	case 0x5:
-		DEVPEEK16(addr, 0x4);
-		DEVPEEK16(len, 0xa);
+		NEWDEVPEEK16(addr, dat, 0x4);
+		NEWDEVPEEK16(len, dat, 0xa);
 		if(len > 0x10000 - addr)
 			len = 0x10000 - addr;
-		res = file_stat(c, &d->u->ram[addr], len);
-		DEVPOKE16(0x2, res);
+		res = file_stat(c, &u->ram[addr], len);
+		NEWDEVPOKE16(dat, 0x2, res);
 		break;
 	case 0x6:
 		res = file_delete(c);
-		DEVPOKE16(0x2, res);
+		NEWDEVPOKE16(dat, 0x2, res);
 		break;
 	case 0x9:
-		DEVPEEK16(addr, 0x8);
-		res = file_init(c, (char *)&d->u->ram[addr], 0x10000 - addr);
-		DEVPOKE16(0x2, res);
+		NEWDEVPEEK16(addr, dat, 0x8);
+		res = file_init(c, (char *)&u->ram[addr], 0x10000 - addr);
+		NEWDEVPOKE16(dat, 0x2, res);
 		break;
 	case 0xd:
-		DEVPEEK16(addr, 0xc);
-		DEVPEEK16(len, 0xa);
+		NEWDEVPEEK16(addr, dat, 0xc);
+		NEWDEVPEEK16(len, dat, 0xa);
 		if(len > 0x10000 - addr)
 			len = 0x10000 - addr;
-		res = file_read(c, &d->u->ram[addr], len);
-		DEVPOKE16(0x2, res);
+		res = file_read(c, &u->ram[addr], len);
+		NEWDEVPOKE16(dat, 0x2, res);
 		break;
 	case 0xf:
-		DEVPEEK16(addr, 0xe);
-		DEVPEEK16(len, 0xa);
+		NEWDEVPEEK16(addr, dat, 0xe);
+		NEWDEVPEEK16(len, dat, 0xa);
 		if(len > 0x10000 - addr)
 			len = 0x10000 - addr;
-		res = file_write(c, &d->u->ram[addr], len, d->dat[0x7]);
-		DEVPOKE16(0x2, res);
+		res = file_write(c, &u->ram[addr], len, dat[0x7]);
+		NEWDEVPOKE16(dat, 0x2, res);
 		break;
 	}
 }
 
 Uint8
-file_dei(Device *d, Uint8 port)
+file_dei(Uxn *u, Uint8 *dat, UxnFile *c, Uint8 port)
 {
-	UxnFile *c = file_instance(d);
 	Uint16 res;
 	switch(port) {
 	case 0xc:
 	case 0xd:
-		res = file_read(c, &d->dat[port], 1);
-		DEVPOKE16(0x2, res);
+		res = file_read(c, &dat[port], 1);
+		NEWDEVPOKE16(dat, 0x2, res);
 		break;
 	}
-	return d->dat[port];
+	return dat[port];
 }
 
 /* Boot */
@@ -221,8 +225,10 @@ int
 load_rom(Uxn *u, char *filename)
 {
 	int ret;
-	file_init(uxn_file, filename, strlen(filename) + 1);
-	ret = file_read(uxn_file, &u->ram[PAGE_PROGRAM], 0x10000 - PAGE_PROGRAM);
-	reset(uxn_file);
+	UxnFile uxn_file;
+	memset(&uxn_file, 0, sizeof uxn_file);
+	file_init(&uxn_file, filename, strlen(filename) + 1);
+	ret = file_read(&uxn_file, &u->ram[PAGE_PROGRAM], 0x10000 - PAGE_PROGRAM);
+	reset(&uxn_file);
 	return ret;
 }
