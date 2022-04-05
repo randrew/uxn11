@@ -16,6 +16,7 @@
 #include "devices/file.h"
 #include "devices/datetime.h"
 
+#define DEV_CONTROL 0x8
 #define DEV_MOUSE 0x9
 
 typedef struct Emulator {
@@ -25,7 +26,6 @@ typedef struct Emulator {
 	Display *display;
 	Visual *visual;
 	Window window;
-	Device *devctrl;
 } Emulator;
 
 #define WIDTH (64 * 8)
@@ -152,14 +152,14 @@ processEvent(Emulator *m)
 		KeySym sym;
 		char buf[7];
 		XLookupString((XKeyPressedEvent *)&ev, buf, 7, &sym, 0);
-		controller_down(m->devctrl, get_button(sym));
-		controller_key(m->devctrl, sym < 0x80 ? sym : buf[0]);
+		controller_down(&m->u, m->u.dev[DEV_CONTROL].dat, get_button(sym));
+		controller_key(&m->u, m->u.dev[DEV_CONTROL].dat, sym < 0x80 ? sym : buf[0]);
 	} break;
 	case KeyRelease: {
 		KeySym sym;
 		char buf[7];
 		XLookupString((XKeyPressedEvent *)&ev, buf, 7, &sym, 0);
-		controller_up(m->devctrl, get_button(sym));
+		controller_up(&m->u, m->u.dev[DEV_CONTROL].dat, get_button(sym));
 	} break;
 	case ButtonPress: {
 		XButtonPressedEvent *e = (XButtonPressedEvent *)&ev;
@@ -209,7 +209,7 @@ start(Emulator *m, char *rom)
 	/* empty    */ uxn_port(u, 0x5);
 	/* empty    */ uxn_port(u, 0x6);
 	/* empty    */ uxn_port(u, 0x7);
-	/* control  */ m->devctrl = uxn_port(u, 0x8);
+	/* control  */ uxn_port(u, 0x8);
 	/* mouse    */ uxn_port(u, 0x9);
 	/* file0    */ uxn_port(u, 0xa);
 	/* file1    */ uxn_port(u, 0xb);
