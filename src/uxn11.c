@@ -16,6 +16,8 @@
 #include "devices/file.h"
 #include "devices/datetime.h"
 
+#define DEV_MOUSE 0x9
+
 typedef struct Emulator {
 	Uxn u;
 	UxnScreen screen;
@@ -23,7 +25,7 @@ typedef struct Emulator {
 	Display *display;
 	Visual *visual;
 	Window window;
-	Device *devctrl, *devmouse;
+	Device *devctrl;
 } Emulator;
 
 #define WIDTH (64 * 8)
@@ -131,8 +133,6 @@ get_button(KeySym sym)
 	return 0x00;
 }
 
-#define DEV_MOUSE 0x9
-
 static void
 processEvent(Emulator *m)
 {
@@ -210,7 +210,7 @@ start(Emulator *m, char *rom)
 	/* empty    */ uxn_port(u, 0x6);
 	/* empty    */ uxn_port(u, 0x7);
 	/* control  */ m->devctrl = uxn_port(u, 0x8);
-	/* mouse    */ m->devmouse = uxn_port(u, 0x9);
+	/* mouse    */ uxn_port(u, 0x9);
 	/* file0    */ uxn_port(u, 0xa);
 	/* file1    */ uxn_port(u, 0xb);
 	/* datetime */ uxn_port(u, 0xc);
