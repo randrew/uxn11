@@ -75,7 +75,7 @@ uxn11_dei(Uxn *u, Uint8 addr)
 	Device *d = &u->dev[addr >> 4];
 	switch(addr & 0xf0) {
 	case 0x20: screen_dei(&m->screen, d->dat, p); break;
-	case 0xa0: file_dei(u, d->dat, m->files[dev_id - DEV_FILE0], p); break;
+	case 0xa0:
 	case 0xb0: file_dei(u, d->dat, m->files[dev_id - DEV_FILE0], p); break;
 	case 0xc0: datetime_dei(d, p); break;
 	}
@@ -94,7 +94,7 @@ uxn11_deo(Uxn *u, Uint8 addr, Uint8 v)
 	case 0x00: system_deo(u, d, p); break;
 	case 0x10: console_deo(d, p); break;
 	case 0x20: screen_deo(u, &m->screen, d->dat, p); break;
-	case 0xa0: file_deo(u, d->dat, m->files[dev_id - DEV_FILE0], p); break;
+	case 0xa0:
 	case 0xb0: file_deo(u, d->dat, m->files[dev_id - DEV_FILE0], p); break;
 	}
 }
