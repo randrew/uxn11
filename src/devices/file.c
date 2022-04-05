@@ -170,37 +170,37 @@ file_deo(Uxn *u, Uint8 *dat, UxnFile *c, Uint8 port)
 	Uint16 addr, len, res;
 	switch(port) {
 	case 0x5:
-		NEWDEVPEEK16(addr, dat, 0x4);
-		NEWDEVPEEK16(len, dat, 0xa);
+		DEVPEEK16(addr, dat, 0x4);
+		DEVPEEK16(len, dat, 0xa);
 		if(len > 0x10000 - addr)
 			len = 0x10000 - addr;
 		res = file_stat(c, &u->ram[addr], len);
-		NEWDEVPOKE16(dat, 0x2, res);
+		DEVPOKE16(dat, 0x2, res);
 		break;
 	case 0x6:
 		res = file_delete(c);
-		NEWDEVPOKE16(dat, 0x2, res);
+		DEVPOKE16(dat, 0x2, res);
 		break;
 	case 0x9:
-		NEWDEVPEEK16(addr, dat, 0x8);
+		DEVPEEK16(addr, dat, 0x8);
 		res = file_init(c, (char *)&u->ram[addr], 0x10000 - addr);
-		NEWDEVPOKE16(dat, 0x2, res);
+		DEVPOKE16(dat, 0x2, res);
 		break;
 	case 0xd:
-		NEWDEVPEEK16(addr, dat, 0xc);
-		NEWDEVPEEK16(len, dat, 0xa);
+		DEVPEEK16(addr, dat, 0xc);
+		DEVPEEK16(len, dat, 0xa);
 		if(len > 0x10000 - addr)
 			len = 0x10000 - addr;
 		res = file_read(c, &u->ram[addr], len);
-		NEWDEVPOKE16(dat, 0x2, res);
+		DEVPOKE16(dat, 0x2, res);
 		break;
 	case 0xf:
-		NEWDEVPEEK16(addr, dat, 0xe);
-		NEWDEVPEEK16(len, dat, 0xa);
+		DEVPEEK16(addr, dat, 0xe);
+		DEVPEEK16(len, dat, 0xa);
 		if(len > 0x10000 - addr)
 			len = 0x10000 - addr;
 		res = file_write(c, &u->ram[addr], len, dat[0x7]);
-		NEWDEVPOKE16(dat, 0x2, res);
+		DEVPOKE16(dat, 0x2, res);
 		break;
 	}
 }
@@ -213,7 +213,7 @@ file_dei(Uxn *u, Uint8 *dat, UxnFile *c, Uint8 port)
 	case 0xc:
 	case 0xd:
 		res = file_read(c, &dat[port], 1);
-		NEWDEVPOKE16(dat, 0x2, res);
+		DEVPOKE16(dat, 0x2, res);
 		break;
 	}
 	return dat[port];

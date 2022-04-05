@@ -17,7 +17,7 @@ controller_down(Uxn *u, Uint8 *dat, Uint8 mask)
 {
 	if(mask) {
 		dat[2] |= mask;
-		uxn_eval(u, NEWGETVECTOR(dat));
+		uxn_eval(u, GETVECTOR(dat));
 	}
 }
 
@@ -26,7 +26,7 @@ controller_up(Uxn *u, Uint8 *dat, Uint8 mask)
 {
 	if(mask) {
 		dat[2] &= (~mask);
-		uxn_eval(u, NEWGETVECTOR(dat));
+		uxn_eval(u, GETVECTOR(dat));
 	}
 }
 
@@ -35,7 +35,7 @@ controller_key(Uxn *u, Uint8 *dat, Uint8 key)
 {
 	if(key) {
 		dat[3] = key;
-		uxn_eval(u, NEWGETVECTOR(dat));
+		uxn_eval(u, GETVECTOR(dat));
 		dat[3] = 0x00;
 	}
 }
@@ -45,7 +45,7 @@ controller_special(Uxn *u, Uint8 *dat, Uint8 key)
 {
 	if(key) {
 		dat[4] = key;
-		uxn_eval(u, NEWGETVECTOR(dat));
+		uxn_eval(u, GETVECTOR(dat));
 		dat[4] = 0x00;
 	}
 }

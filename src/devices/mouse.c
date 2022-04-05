@@ -16,30 +16,30 @@ void
 mouse_down(Uxn* u, Uint8* dat, Uint8 mask)
 {
 	dat[6] |= mask;
-	uxn_eval(u, NEWGETVECTOR(dat));
+	uxn_eval(u, GETVECTOR(dat));
 }
 
 void
 mouse_up(Uxn* u, Uint8* dat, Uint8 mask)
 {
 	dat[6] &= (~mask);
-	uxn_eval(u, NEWGETVECTOR(dat));
+	uxn_eval(u, GETVECTOR(dat));
 }
 
 void
 mouse_pos(Uxn* u, Uint8* dat, Uint16 x, Uint16 y)
 {
-	NEWDEVPOKE16(dat, 0x2, x);
-	NEWDEVPOKE16(dat, 0x4, y);
-	uxn_eval(u, NEWGETVECTOR(dat));
+	DEVPOKE16(dat, 0x2, x);
+	DEVPOKE16(dat, 0x4, y);
+	uxn_eval(u, GETVECTOR(dat));
 }
 
 void
 mouse_scroll(Uxn* u, Uint8* dat, Uint16 x, Uint16 y)
 {
-	NEWDEVPOKE16(dat, 0xa, x);
-	NEWDEVPOKE16(dat, 0xc, -y);
-	uxn_eval(u, NEWGETVECTOR(dat));
-	NEWDEVPOKE16(dat, 0xa, 0);
-	NEWDEVPOKE16(dat, 0xc, 0);
+	DEVPOKE16(dat, 0xa, x);
+	DEVPOKE16(dat, 0xc, -y);
+	uxn_eval(u, GETVECTOR(dat));
+	DEVPOKE16(dat, 0xa, 0);
+	DEVPOKE16(dat, 0xc, 0);
 }

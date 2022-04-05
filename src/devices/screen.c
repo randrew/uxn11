@@ -133,34 +133,34 @@ screen_deo(Uxn *u, UxnScreen *screen, Uint8 *dat, Uint8 port)
 	case 0x3:
 		if(!FIXED_SIZE) {
 			Uint16 w;
-			NEWDEVPEEK16(w, dat, 0x2);
+			DEVPEEK16(w, dat, 0x2);
 			screen_resize(screen, clamp(w, 1, 1024), screen->height);
 		}
 		break;
 	case 0x5:
 		if(!FIXED_SIZE) {
 			Uint16 h;
-			NEWDEVPEEK16(h, dat, 0x4);
+			DEVPEEK16(h, dat, 0x4);
 			screen_resize(screen, screen->width, clamp(h, 1, 1024));
 		}
 		break;
 	case 0xe: {
 		Uint16 x, y;
 		Uint8 layer = dat[0xe] & 0x40;
-		NEWDEVPEEK16(x, dat, 0x8);
-		NEWDEVPEEK16(y, dat, 0xa);
+		DEVPEEK16(x, dat, 0x8);
+		DEVPEEK16(y, dat, 0xa);
 		screen_write(screen, layer ? &screen->fg : &screen->bg, x, y, dat[0xe] & 0x3);
-		if(dat[0x6] & 0x01) NEWDEVPOKE16(dat, 0x8, x + 1); /* auto x+1 */
-		if(dat[0x6] & 0x02) NEWDEVPOKE16(dat, 0xa, y + 1); /* auto y+1 */
+		if(dat[0x6] & 0x01) DEVPOKE16(dat, 0x8, x + 1); /* auto x+1 */
+		if(dat[0x6] & 0x02) DEVPOKE16(dat, 0xa, y + 1); /* auto y+1 */
 		break;
 	}
 	case 0xf: {
 		Uint16 x, y, dx, dy, addr;
 		Uint8 i, n, twobpp = !!(dat[0xf] & 0x80);
 		Layer *layer = (dat[0xf] & 0x40) ? &screen->fg : &screen->bg;
-		NEWDEVPEEK16(x, dat, 0x8);
-		NEWDEVPEEK16(y, dat, 0xa);
-		NEWDEVPEEK16(addr, dat, 0xc);
+		DEVPEEK16(x, dat, 0x8);
+		DEVPEEK16(y, dat, 0xa);
+		DEVPEEK16(addr, dat, 0xc);
 		n = dat[0x6] >> 4;
 		dx = (dat[0x6] & 0x01) << 3;
 		dy = (dat[0x6] & 0x02) << 2;
@@ -170,9 +170,9 @@ screen_deo(Uxn *u, UxnScreen *screen, Uint8 *dat, Uint8 port)
 			screen_blit(screen, layer, x + dy * i, y + dx * i, &u->ram[addr], dat[0xf] & 0xf, dat[0xf] & 0x10, dat[0xf] & 0x20, twobpp);
 			addr += (dat[0x6] & 0x04) << (1 + twobpp);
 		}
-		NEWDEVPOKE16(dat, 0xc, addr);   /* auto addr+length */
-		NEWDEVPOKE16(dat, 0x8, x + dx); /* auto x+8 */
-		NEWDEVPOKE16(dat, 0xa, y + dy); /* auto y+8 */
+		DEVPOKE16(dat, 0xc, addr);   /* auto addr+length */
+		DEVPOKE16(dat, 0x8, x + dx); /* auto x+8 */
+		DEVPOKE16(dat, 0xa, y + dy); /* auto y+8 */
 		break;
 	}
 	}

@@ -52,7 +52,7 @@ console_input(Uxn *u, char c)
 {
 	Uint8 *dat = u->dev[1].dat;
 	dat[0x2] = c;
-	return uxn_eval(u, NEWGETVECTOR(dat));
+	return uxn_eval(u, GETVECTOR(dat));
 }
 
 static void
@@ -249,7 +249,7 @@ main(int argc, char **argv)
 			processEvent(&m);
 		if(poll(&fds[1], 1, 0)) {
 			read(fds[1].fd, expirations, 8);                /* Indicate we handled the timer */
-			uxn_eval(&m.u, NEWGETVECTOR(m.u.dev[0x2].dat)); /* Call the vector once, even if the timer fired multiple times */
+			uxn_eval(&m.u, GETVECTOR(m.u.dev[0x2].dat)); /* Call the vector once, even if the timer fired multiple times */
 		}
 		if(m.screen.fg.changed || m.screen.bg.changed)
 			redraw(&m);
