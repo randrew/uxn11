@@ -22,10 +22,6 @@ typedef unsigned int Uint32;
 
 /* clang-format off */
 
-#define DEVPEEK16(o, x) { (o) = (d->dat[(x)] << 8) + d->dat[(x) + 1]; }
-#define DEVPOKE16(x, y) { d->dat[(x)] = (y) >> 8; d->dat[(x) + 1] = (y); }
-#define GETVECTOR(d) ((d)->dat[0] << 8 | (d)->dat[1])
-
 #define NEWDEVPEEK16(o, dat, x) ((o) = ((dat)[(x)] << 8) + (dat)[(x) + 1])
 #define NEWDEVPOKE16(dat, x, y) ((dat)[(x)] = (y) >> 8, (dat)[(x) + 1] = (y))
 #define NEWGETVECTOR(dat) ((dat)[0] << 8 | (dat)[1])

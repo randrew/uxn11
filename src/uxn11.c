@@ -50,9 +50,9 @@ system_deo_special(Uxn *u, Uint8 *dat, Uint8 port)
 static int
 console_input(Uxn *u, char c)
 {
-	Device *d = &u->dev[1];
-	d->dat[0x2] = c;
-	return uxn_eval(u, GETVECTOR(d));
+	Uint8 *dat = u->dev[1].dat;
+	dat[0x2] = c;
+	return uxn_eval(u, NEWGETVECTOR(dat));
 }
 
 static void
