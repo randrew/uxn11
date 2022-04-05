@@ -9,6 +9,8 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 WITH REGARD TO THIS SOFTWARE.
 */
 
+#include "../uxn.h"
+
 typedef struct SystemDevice {
 	Device device;
 	struct UxnScreen *screen;

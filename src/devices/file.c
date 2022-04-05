@@ -4,7 +4,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "../uxn.h"
 #include "file.h"
 
 /*

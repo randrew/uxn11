@@ -10,6 +10,8 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 WITH REGARD TO THIS SOFTWARE.
 */
 
+#include "../uxn.h"
+
 void controller_down(Device *d, Uint8 mask);
 void controller_up(Device *d, Uint8 mask);
 void controller_key(Device *d, Uint8 key);

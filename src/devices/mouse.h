@@ -10,6 +10,8 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 WITH REGARD TO THIS SOFTWARE.
 */
 
+#include "../uxn.h"
+
 void mouse_down(Device *d, Uint8 mask);
 void mouse_up(Device *d, Uint8 mask);
 void mouse_pos(Device *d, Uint16 x, Uint16 y);
