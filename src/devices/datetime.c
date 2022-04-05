@@ -15,7 +15,7 @@ WITH REGARD TO THIS SOFTWARE.
 */
 
 Uint8
-datetime_dei(Device *d, Uint8 port)
+datetime_dei(Uint8 *dat, Uint8 port)
 {
 	time_t seconds = time(NULL);
 	struct tm zt = {0};
@@ -34,6 +34,6 @@ datetime_dei(Device *d, Uint8 port)
 	case 0x8: return t->tm_yday >> 8;
 	case 0x9: return t->tm_yday;
 	case 0xa: return t->tm_isdst;
-	default: return d->dat[port];
+	default: return dat[port];
 	}
 }

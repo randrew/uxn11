@@ -77,7 +77,7 @@ uxn11_dei(Uxn *u, Uint8 addr)
 	case 0x20: screen_dei(&m->screen, d->dat, p); break;
 	case 0xa0:
 	case 0xb0: file_dei(u, d->dat, m->files[dev_id - DEV_FILE0], p); break;
-	case 0xc0: datetime_dei(d, p); break;
+	case 0xc0: datetime_dei(d->dat, p); break;
 	}
 	return d->dat[p];
 }

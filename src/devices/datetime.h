@@ -12,4 +12,4 @@ WITH REGARD TO THIS SOFTWARE.
 
 #include "../uxn.h"
 
-Uint8 datetime_dei(Device *d, Uint8 port);
+Uint8 datetime_dei(Uint8 *dat, Uint8 port);
