@@ -18,11 +18,12 @@
 
 typedef struct Emulator {
 	Uxn u;
+	UxnScreen screen;
 	XImage *ximage;
 	Display *display;
 	Visual *visual;
 	Window window;
-	Device *devscreen, *devctrl, *devmouse;
+	Device *devctrl, *devmouse;
 } Emulator;
 
 #define WIDTH (64 * 8)
@@ -36,10 +37,10 @@ error(char *msg, const char *err)
 }
 
 void
-system_deo_special(Device *d, Uint8 port)
+system_deo_special(Uxn *u, Device *d, Uint8 port)
 {
 	if(port > 0x7 && port < 0xe)
-		screen_palette(&uxn_screen, &d->dat[0x8]);
+		screen_palette(&((Emulator *)u)->screen, &d->dat[0x8]);
 }
 
 static int
@@ -62,12 +63,13 @@ console_deo(Device *d, Uint8 port)
 }
 
 static Uint8
-uxn11_dei(struct Uxn *u, Uint8 addr)
+uxn11_dei(Uxn *u, Uint8 addr)
 {
+	Emulator *m = (Emulator *)u;
 	Uint8 p = addr & 0x0f;
 	Device *d = &u->dev[addr >> 4];
 	switch(addr & 0xf0) {
-	case 0x20: screen_dei(d, p); break;
+	case 0x20: screen_dei(&m->screen, d->dat, p); break;
 	case 0xa0: file_dei(d, p); break;
 	case 0xb0: file_dei(d, p); break;
 	case 0xc0: datetime_dei(d, p); break;
@@ -78,13 +80,14 @@ uxn11_dei(struct Uxn *u, Uint8 addr)
 static void
 uxn11_deo(Uxn *u, Uint8 addr, Uint8 v)
 {
+	Emulator *m = (Emulator *)u;
 	Uint8 p = addr & 0x0f;
 	Device *d = &u->dev[addr >> 4];
 	d->dat[p] = v;
 	switch(addr & 0xf0) {
-	case 0x00: system_deo(d, p); break;
+	case 0x00: system_deo(u, d, p); break;
 	case 0x10: console_deo(d, p); break;
-	case 0x20: screen_deo(d, p); break;
+	case 0x20: screen_deo(u, &m->screen, d->dat, p); break;
 	case 0xa0: file_deo(d, p); break;
 	case 0xb0: file_deo(d, p); break;
 	}
@@ -93,8 +96,8 @@ uxn11_deo(Uxn *u, Uint8 addr, Uint8 v)
 static void
 redraw(Emulator *m)
 {
-	screen_redraw(&uxn_screen, uxn_screen.pixels);
-	XPutImage(m->display, m->window, DefaultGC(m->display, 0), m->ximage, 0, 0, 0, 0, uxn_screen.width, uxn_screen.height);
+	screen_redraw(&m->screen);
+	XPutImage(m->display, m->window, DefaultGC(m->display, 0), m->ximage, 0, 0, 0, 0, m->screen.width, m->screen.height);
 }
 
 static void
@@ -196,24 +199,24 @@ start(Emulator *m, char *rom)
 	m->u.dei = uxn11_dei;
 	m->u.deo = uxn11_deo;
 
-	/* system   */ uxn_port(u, 0x0, nil_dei, system_deo);
-	/* console  */ uxn_port(u, 0x1, nil_dei, console_deo);
-	/* screen   */ m->devscreen = uxn_port(u, 0x2, screen_dei, screen_deo);
-	/* empty    */ uxn_port(u, 0x3, nil_dei, nil_deo);
-	/* empty    */ uxn_port(u, 0x4, nil_dei, nil_deo);
-	/* empty    */ uxn_port(u, 0x5, nil_dei, nil_deo);
-	/* empty    */ uxn_port(u, 0x6, nil_dei, nil_deo);
-	/* empty    */ uxn_port(u, 0x7, nil_dei, nil_deo);
-	/* control  */ m->devctrl = uxn_port(u, 0x8, nil_dei, nil_deo);
-	/* mouse    */ m->devmouse = uxn_port(u, 0x9, nil_dei, nil_deo);
-	/* file0    */ uxn_port(u, 0xa, file_dei, file_deo);
-	/* file1    */ uxn_port(u, 0xb, file_dei, file_deo);
-	/* datetime */ uxn_port(u, 0xc, datetime_dei, nil_deo);
-	/* empty    */ uxn_port(u, 0xd, nil_dei, nil_deo);
-	/* reserved */ uxn_port(u, 0xe, nil_dei, nil_deo);
-	/* reserved */ uxn_port(u, 0xf, nil_dei, nil_deo);
+	/* system   */ uxn_port(u, 0x0);
+	/* console  */ uxn_port(u, 0x1);
+	/* screen   */ uxn_port(u, 0x2);
+	/* empty    */ uxn_port(u, 0x3);
+	/* empty    */ uxn_port(u, 0x4);
+	/* empty    */ uxn_port(u, 0x5);
+	/* empty    */ uxn_port(u, 0x6);
+	/* empty    */ uxn_port(u, 0x7);
+	/* control  */ m->devctrl = uxn_port(u, 0x8);
+	/* mouse    */ m->devmouse = uxn_port(u, 0x9);
+	/* file0    */ uxn_port(u, 0xa);
+	/* file1    */ uxn_port(u, 0xb);
+	/* datetime */ uxn_port(u, 0xc);
+	/* empty    */ uxn_port(u, 0xd);
+	/* reserved */ uxn_port(u, 0xe);
+	/* reserved */ uxn_port(u, 0xf);
 
-	screen_resize(&uxn_screen, WIDTH, HEIGHT);
+	screen_resize(&m->screen, WIDTH, HEIGHT);
 	if(!uxn_eval(u, PAGE_PROGRAM))
 		return error("Boot", "Failed to start rom.");
 	return 1;
@@ -225,14 +228,14 @@ init(Emulator *m)
 	Atom wmDelete;
 	m->display = XOpenDisplay(NULL);
 	m->visual = DefaultVisual(m->display, 0);
-	m->window = XCreateSimpleWindow(m->display, RootWindow(m->display, 0), 0, 0, uxn_screen.width, uxn_screen.height, 1, 0, 0);
+	m->window = XCreateSimpleWindow(m->display, RootWindow(m->display, 0), 0, 0, m->screen.width, m->screen.height, 1, 0, 0);
 	if(m->visual->class != TrueColor)
 		return error("Init", "True-color m->visual failed");
 	XSelectInput(m->display, m->window, ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ExposureMask | KeyPressMask | KeyReleaseMask);
 	wmDelete = XInternAtom(m->display, "WM_DELETE_WINDOW", True);
 	XSetWMProtocols(m->display, m->window, &wmDelete, 1);
 	XMapWindow(m->display, m->window);
-	m->ximage = XCreateImage(m->display, m->visual, DefaultDepth(m->display, DefaultScreen(m->display)), ZPixmap, 0, (char *)uxn_screen.pixels, uxn_screen.width, uxn_screen.height, 32, 0);
+	m->ximage = XCreateImage(m->display, m->visual, DefaultDepth(m->display, DefaultScreen(m->display)), ZPixmap, 0, (char *)m->screen.pixels, m->screen.width, m->screen.height, 32, 0);
 	hide_cursor(m);
 	return 1;
 }
@@ -270,9 +273,9 @@ main(int argc, char **argv)
 			processEvent(&m);
 		if(poll(&fds[1], 1, 0)) {
 			read(fds[1].fd, expirations, 8);    /* Indicate we handled the timer */
-			uxn_eval(&m.u, GETVECTOR(m.devscreen)); /* Call the vector once, even if the timer fired multiple times */
+			uxn_eval(&m.u, NEWGETVECTOR(m.u.dev[0x2].dat)); /* Call the vector once, even if the timer fired multiple times */
 		}
-		if(uxn_screen.fg.changed || uxn_screen.bg.changed)
+		if(m.screen.fg.changed || m.screen.bg.changed)
 			redraw(&m);
 	}
 	XDestroyImage(m.ximage);

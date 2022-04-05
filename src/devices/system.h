@@ -15,5 +15,5 @@ typedef struct SystemDevice {
 } SystemDevice;
 
 void system_inspect(Uxn *u);
-void system_deo(Device *d, Uint8 port);
-void system_deo_special(Device *d, Uint8 port);
+void system_deo(Uxn *u, Device *d, Uint8 port);
+void system_deo_special(Uxn *u, Device *d, Uint8 port);

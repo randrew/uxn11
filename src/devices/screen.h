@@ -22,13 +22,11 @@ typedef struct UxnScreen {
 	Layer fg, bg;
 } UxnScreen;
 
-extern UxnScreen uxn_screen;
-
 void screen_palette(UxnScreen *p, Uint8 *addr);
 void screen_resize(UxnScreen *p, Uint16 width, Uint16 height);
 void screen_clear(UxnScreen *p, Layer *layer);
-void screen_redraw(UxnScreen *p, Uint32 *pixels);
+void screen_redraw(UxnScreen *p);
 
-Uint8 screen_dei(Device *d, Uint8 port);
-void screen_deo(Device *d, Uint8 port);
+Uint8 screen_dei(UxnScreen *screen, Uint8 *dat, Uint8 port);
+void screen_deo(Uxn *u, UxnScreen *screen, Uint8 *dat, Uint8 port);
 int clamp(int val, int min, int max);

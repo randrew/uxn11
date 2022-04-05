@@ -15,8 +15,6 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 WITH REGARD TO THIS SOFTWARE.
 */
 
-UxnScreen uxn_screen;
-
 static Uint8 blending[5][16] = {
 	{0, 0, 0, 0, 1, 0, 1, 1, 2, 2, 0, 2, 3, 3, 3, 0},
 	{0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3},
@@ -98,8 +96,9 @@ screen_clear(UxnScreen *p, Layer *layer)
 }
 
 void
-screen_redraw(UxnScreen *p, Uint32 *pixels)
+screen_redraw(UxnScreen *p)
 {
+	Uint32 *pixels = p->pixels;
 	Uint32 i, size = p->width * p->height, palette[16];
 	for(i = 0; i < 16; i++)
 		palette[i] = p->palette[(i >> 2) ? (i >> 2) : (i & 3)];
@@ -117,64 +116,64 @@ clamp(int val, int min, int max)
 /* IO */
 
 Uint8
-screen_dei(Device *d, Uint8 port)
+screen_dei(UxnScreen *screen, Uint8 *dat, Uint8 port)
 {
 	switch(port) {
-	case 0x2: return uxn_screen.width >> 8;
-	case 0x3: return uxn_screen.width;
-	case 0x4: return uxn_screen.height >> 8;
-	case 0x5: return uxn_screen.height;
-	default: return d->dat[port];
+	case 0x2: return screen->width >> 8;
+	case 0x3: return screen->width;
+	case 0x4: return screen->height >> 8;
+	case 0x5: return screen->height;
+	default: return dat[port];
 	}
 }
 
 void
-screen_deo(Device *d, Uint8 port)
+screen_deo(Uxn *u, UxnScreen *screen, Uint8 *dat, Uint8 port)
 {
 	switch(port) {
 	case 0x3:
 		if(!FIXED_SIZE) {
 			Uint16 w;
-			DEVPEEK16(w, 0x2);
-			screen_resize(&uxn_screen, clamp(w, 1, 1024), uxn_screen.height);
+			NEWDEVPEEK16(w, dat, 0x2);
+			screen_resize(screen, clamp(w, 1, 1024), screen->height);
 		}
 		break;
 	case 0x5:
 		if(!FIXED_SIZE) {
 			Uint16 h;
-			DEVPEEK16(h, 0x4);
-			screen_resize(&uxn_screen, uxn_screen.width, clamp(h, 1, 1024));
+			NEWDEVPEEK16(h, dat, 0x4);
+			screen_resize(screen, screen->width, clamp(h, 1, 1024));
 		}
 		break;
 	case 0xe: {
 		Uint16 x, y;
-		Uint8 layer = d->dat[0xe] & 0x40;
-		DEVPEEK16(x, 0x8);
-		DEVPEEK16(y, 0xa);
-		screen_write(&uxn_screen, layer ? &uxn_screen.fg : &uxn_screen.bg, x, y, d->dat[0xe] & 0x3);
-		if(d->dat[0x6] & 0x01) DEVPOKE16(0x8, x + 1); /* auto x+1 */
-		if(d->dat[0x6] & 0x02) DEVPOKE16(0xa, y + 1); /* auto y+1 */
+		Uint8 layer = dat[0xe] & 0x40;
+		NEWDEVPEEK16(x, dat, 0x8);
+		NEWDEVPEEK16(y, dat, 0xa);
+		screen_write(screen, layer ? &screen->fg : &screen->bg, x, y, dat[0xe] & 0x3);
+		if(dat[0x6] & 0x01) NEWDEVPOKE16(dat, 0x8, x + 1); /* auto x+1 */
+		if(dat[0x6] & 0x02) NEWDEVPOKE16(dat, 0xa, y + 1); /* auto y+1 */
 		break;
 	}
 	case 0xf: {
 		Uint16 x, y, dx, dy, addr;
-		Uint8 i, n, twobpp = !!(d->dat[0xf] & 0x80);
-		Layer *layer = (d->dat[0xf] & 0x40) ? &uxn_screen.fg : &uxn_screen.bg;
-		DEVPEEK16(x, 0x8);
-		DEVPEEK16(y, 0xa);
-		DEVPEEK16(addr, 0xc);
-		n = d->dat[0x6] >> 4;
-		dx = (d->dat[0x6] & 0x01) << 3;
-		dy = (d->dat[0x6] & 0x02) << 2;
+		Uint8 i, n, twobpp = !!(dat[0xf] & 0x80);
+		Layer *layer = (dat[0xf] & 0x40) ? &screen->fg : &screen->bg;
+		NEWDEVPEEK16(x, dat, 0x8);
+		NEWDEVPEEK16(y, dat, 0xa);
+		NEWDEVPEEK16(addr, dat, 0xc);
+		n = dat[0x6] >> 4;
+		dx = (dat[0x6] & 0x01) << 3;
+		dy = (dat[0x6] & 0x02) << 2;
 		if(addr > 0x10000 - ((n + 1) << (3 + twobpp)))
 			return;
 		for(i = 0; i <= n; i++) {
-			screen_blit(&uxn_screen, layer, x + dy * i, y + dx * i, &d->u->ram[addr], d->dat[0xf] & 0xf, d->dat[0xf] & 0x10, d->dat[0xf] & 0x20, twobpp);
-			addr += (d->dat[0x6] & 0x04) << (1 + twobpp);
+			screen_blit(screen, layer, x + dy * i, y + dx * i, &u->ram[addr], dat[0xf] & 0xf, dat[0xf] & 0x10, dat[0xf] & 0x20, twobpp);
+			addr += (dat[0x6] & 0x04) << (1 + twobpp);
 		}
-		DEVPOKE16(0xc, addr);   /* auto addr+length */
-		DEVPOKE16(0x8, x + dx); /* auto x+8 */
-		DEVPOKE16(0xa, y + dy); /* auto y+8 */
+		NEWDEVPOKE16(dat, 0xc, addr);   /* auto addr+length */
+		NEWDEVPOKE16(dat, 0x8, x + dx); /* auto x+8 */
+		NEWDEVPOKE16(dat, 0xa, y + dy); /* auto y+8 */
 		break;
 	}
 	}

@@ -52,12 +52,12 @@ uxn_halt(Uxn *u, Uint8 error, Uint16 addr)
 /* IO */
 
 void
-system_deo(Device *d, Uint8 port)
+system_deo(Uxn *u, Device *d, Uint8 port)
 {
 	switch(port) {
 	case 0x2: d->u->wst = (Stack*)(d->u->ram + (d->dat[port] ? (d->dat[port] * 0x100) : 0x10000)); break;
 	case 0x3: d->u->rst = (Stack*)(d->u->ram + (d->dat[port] ? (d->dat[port] * 0x100) : 0x10100)); break;
 	case 0xe: system_inspect(d->u); break;
-	default: system_deo_special(d, port);
+	default: system_deo_special(u, d, port);
 	}
 }
