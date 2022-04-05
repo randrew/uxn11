@@ -5,6 +5,7 @@
 #include <X11/keysymdef.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
+#include <string.h>
 #include <poll.h>
 
 #include "uxn.h"
@@ -15,12 +16,14 @@
 #include "devices/file.h"
 #include "devices/datetime.h"
 
-static XImage *ximage;
-static Display *display;
-static Visual *visual;
-static Window window;
-
-static Device *devscreen, *devctrl, *devmouse;
+typedef struct Emulator {
+	Uxn u;
+	XImage *ximage;
+	Display *display;
+	Visual *visual;
+	Window window;
+	Device *devscreen, *devctrl, *devmouse;
+} Emulator;
 
 #define WIDTH (64 * 8)
 #define HEIGHT (40 * 8)
@@ -88,25 +91,25 @@ uxn11_deo(Uxn *u, Uint8 addr, Uint8 v)
 }
 
 static void
-redraw(void)
+redraw(Emulator *m)
 {
 	screen_redraw(&uxn_screen, uxn_screen.pixels);
-	XPutImage(display, window, DefaultGC(display, 0), ximage, 0, 0, 0, 0, uxn_screen.width, uxn_screen.height);
+	XPutImage(m->display, m->window, DefaultGC(m->display, 0), m->ximage, 0, 0, 0, 0, uxn_screen.width, uxn_screen.height);
 }
 
 static void
-hide_cursor(void)
+hide_cursor(Emulator *m)
 {
 	Cursor blank;
 	Pixmap bitmap;
 	XColor black;
 	static char empty[] = {0, 0, 0, 0, 0, 0, 0, 0};
 	black.red = black.green = black.blue = 0;
-	bitmap = XCreateBitmapFromData(display, window, empty, 8, 8);
-	blank = XCreatePixmapCursor(display, bitmap, bitmap, &black, &black, 0, 0);
-	XDefineCursor(display, window, blank);
-	XFreeCursor(display, blank);
-	XFreePixmap(display, bitmap);
+	bitmap = XCreateBitmapFromData(m->display, m->window, empty, 8, 8);
+	blank = XCreatePixmapCursor(m->display, bitmap, bitmap, &black, &black, 0, 0);
+	XDefineCursor(m->display, m->window, blank);
+	XFreeCursor(m->display, blank);
+	XFreePixmap(m->display, bitmap);
 }
 
 static Uint8
@@ -126,44 +129,44 @@ get_button(KeySym sym)
 }
 
 static void
-processEvent(void)
+processEvent(Emulator *m)
 {
 	XEvent ev;
-	XNextEvent(display, &ev);
+	XNextEvent(m->display, &ev);
 	switch(ev.type) {
 	case Expose:
-		redraw();
+		redraw(m);
 		break;
 	case ClientMessage: {
-		XDestroyImage(ximage);
-		XDestroyWindow(display, window);
-		XCloseDisplay(display);
+		XDestroyImage(m->ximage);
+		XDestroyWindow(m->display, m->window);
+		XCloseDisplay(m->display);
 		exit(0);
 	} break;
 	case KeyPress: {
 		KeySym sym;
 		char buf[7];
 		XLookupString((XKeyPressedEvent *)&ev, buf, 7, &sym, 0);
-		controller_down(devctrl, get_button(sym));
-		controller_key(devctrl, sym < 0x80 ? sym : buf[0]);
+		controller_down(m->devctrl, get_button(sym));
+		controller_key(m->devctrl, sym < 0x80 ? sym : buf[0]);
 	} break;
 	case KeyRelease: {
 		KeySym sym;
 		char buf[7];
 		XLookupString((XKeyPressedEvent *)&ev, buf, 7, &sym, 0);
-		controller_up(devctrl, get_button(sym));
+		controller_up(m->devctrl, get_button(sym));
 	} break;
 	case ButtonPress: {
 		XButtonPressedEvent *e = (XButtonPressedEvent *)&ev;
-		mouse_down(devmouse, 0x1 << (e->button - 1));
+		mouse_down(m->devmouse, 0x1 << (e->button - 1));
 	} break;
 	case ButtonRelease: {
 		XButtonPressedEvent *e = (XButtonPressedEvent *)&ev;
-		mouse_up(devmouse, 0x1 << (e->button - 1));
+		mouse_up(m->devmouse, 0x1 << (e->button - 1));
 	} break;
 	case MotionNotify: {
 		XMotionEvent *e = (XMotionEvent *)&ev;
-		mouse_pos(devmouse, e->x, e->y);
+		mouse_pos(m->devmouse, e->x, e->y);
 	} break;
 	}
 }
@@ -182,26 +185,27 @@ nil_deo(Device *d, Uint8 port)
 }
 
 static int
-start(Uxn *u, char *rom)
+start(Emulator *m, char *rom)
 {
-	if(!uxn_boot(u, (Uint8 *)calloc(0x10200, sizeof(Uint8))))
+	Uxn *u = &m->u; /* temp hack */
+	if(!uxn_boot(&m->u, (Uint8 *)calloc(0x10200, sizeof(Uint8))))
 		return error("Boot", "Failed");
-	if(!load_rom(u, rom))
+	if(!load_rom(&m->u, rom))
 		return error("Load", "Failed");
 	fprintf(stderr, "Loaded %s\n", rom);
-	u->dei = uxn11_dei;
-	u->deo = uxn11_deo;
+	m->u.dei = uxn11_dei;
+	m->u.deo = uxn11_deo;
 
 	/* system   */ uxn_port(u, 0x0, nil_dei, system_deo);
 	/* console  */ uxn_port(u, 0x1, nil_dei, console_deo);
-	/* screen   */ devscreen = uxn_port(u, 0x2, screen_dei, screen_deo);
+	/* screen   */ m->devscreen = uxn_port(u, 0x2, screen_dei, screen_deo);
 	/* empty    */ uxn_port(u, 0x3, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0x4, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0x5, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0x6, nil_dei, nil_deo);
 	/* empty    */ uxn_port(u, 0x7, nil_dei, nil_deo);
-	/* control  */ devctrl = uxn_port(u, 0x8, nil_dei, nil_deo);
-	/* mouse    */ devmouse = uxn_port(u, 0x9, nil_dei, nil_deo);
+	/* control  */ m->devctrl = uxn_port(u, 0x8, nil_dei, nil_deo);
+	/* mouse    */ m->devmouse = uxn_port(u, 0x9, nil_dei, nil_deo);
 	/* file0    */ uxn_port(u, 0xa, file_dei, file_deo);
 	/* file1    */ uxn_port(u, 0xb, file_dei, file_deo);
 	/* datetime */ uxn_port(u, 0xc, datetime_dei, nil_deo);
@@ -216,44 +220,45 @@ start(Uxn *u, char *rom)
 }
 
 static int
-init(void)
+init(Emulator *m)
 {
 	Atom wmDelete;
-	display = XOpenDisplay(NULL);
-	visual = DefaultVisual(display, 0);
-	window = XCreateSimpleWindow(display, RootWindow(display, 0), 0, 0, uxn_screen.width, uxn_screen.height, 1, 0, 0);
-	if(visual->class != TrueColor)
-		return error("Init", "True-color visual failed");
-	XSelectInput(display, window, ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ExposureMask | KeyPressMask | KeyReleaseMask);
-	wmDelete = XInternAtom(display, "WM_DELETE_WINDOW", True);
-	XSetWMProtocols(display, window, &wmDelete, 1);
-	XMapWindow(display, window);
-	ximage = XCreateImage(display, visual, DefaultDepth(display, DefaultScreen(display)), ZPixmap, 0, (char *)uxn_screen.pixels, uxn_screen.width, uxn_screen.height, 32, 0);
-	hide_cursor();
+	m->display = XOpenDisplay(NULL);
+	m->visual = DefaultVisual(m->display, 0);
+	m->window = XCreateSimpleWindow(m->display, RootWindow(m->display, 0), 0, 0, uxn_screen.width, uxn_screen.height, 1, 0, 0);
+	if(m->visual->class != TrueColor)
+		return error("Init", "True-color m->visual failed");
+	XSelectInput(m->display, m->window, ButtonPressMask | ButtonReleaseMask | PointerMotionMask | ExposureMask | KeyPressMask | KeyReleaseMask);
+	wmDelete = XInternAtom(m->display, "WM_DELETE_WINDOW", True);
+	XSetWMProtocols(m->display, m->window, &wmDelete, 1);
+	XMapWindow(m->display, m->window);
+	m->ximage = XCreateImage(m->display, m->visual, DefaultDepth(m->display, DefaultScreen(m->display)), ZPixmap, 0, (char *)uxn_screen.pixels, uxn_screen.width, uxn_screen.height, 32, 0);
+	hide_cursor(m);
 	return 1;
 }
 
 int
 main(int argc, char **argv)
 {
-	Uxn u;
+	Emulator m;
 	int i;
 	char expirations[8];
 	struct pollfd fds[2];
 	static const struct itimerspec screen_tspec = {{0, 16666666}, {0, 16666666}};
+	memset(&m, 0, sizeof m); /* May not be necessary */
 	if(argc < 2)
 		return error("Usage", "uxncli game.rom args");
-	if(!start(&u, argv[1]))
+	if(!start(&m, argv[1]))
 		return error("Start", "Failed");
-	if(!init())
+	if(!init(&m))
 		return error("Init", "Failed");
 	/* console vector */
 	for(i = 2; i < argc; i++) {
 		char *p = argv[i];
-		while(*p) console_input(&u, *p++);
-		console_input(&u, '\n');
+		while(*p) console_input(&m.u, *p++);
+		console_input(&m.u, '\n');
 	}
-	fds[0].fd = XConnectionNumber(display);
+	fds[0].fd = XConnectionNumber(m.display);
 	fds[1].fd = timerfd_create(CLOCK_MONOTONIC, 0);
 	timerfd_settime(fds[1].fd, 0, &screen_tspec, NULL);
 	fds[0].events = fds[1].events = POLLIN;
@@ -261,15 +266,15 @@ main(int argc, char **argv)
 	while(1) {
 		if(poll(fds, 2, 1000) <= 0)
 			continue;
-		while(XPending(display))
-			processEvent();
+		while(XPending(m.display))
+			processEvent(&m);
 		if(poll(&fds[1], 1, 0)) {
 			read(fds[1].fd, expirations, 8);    /* Indicate we handled the timer */
-			uxn_eval(&u, GETVECTOR(devscreen)); /* Call the vector once, even if the timer fired multiple times */
+			uxn_eval(&m.u, GETVECTOR(m.devscreen)); /* Call the vector once, even if the timer fired multiple times */
 		}
 		if(uxn_screen.fg.changed || uxn_screen.bg.changed)
-			redraw();
+			redraw(&m);
 	}
-	XDestroyImage(ximage);
+	XDestroyImage(m.ximage);
 	return 0;
 }
