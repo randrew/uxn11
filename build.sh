@@ -22,4 +22,4 @@ fi
 echo "Done."
 
 # echo "Running.."
-# uxnasm etc/repl.tal bin/repl.rom && bin/uxn11 bin/repl.rom
+bin/uxn11 ~/roms/left.rom

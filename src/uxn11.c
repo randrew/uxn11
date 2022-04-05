@@ -59,16 +59,32 @@ console_deo(Device *d, Uint8 port)
 }
 
 static Uint8
-nil_dei(Device *d, Uint8 port)
+uxn11_dei(struct Uxn *u, Uint8 addr)
 {
-	return d->dat[port];
+	Uint8 p = addr & 0x0f;
+	Device *d = &u->dev[addr >> 4];
+	switch(addr & 0xf0) {
+	case 0x20: screen_dei(d, p); break;
+	case 0xa0: file_dei(d, p); break;
+	case 0xb0: file_dei(d, p); break;
+	case 0xc0: datetime_dei(d, p); break;
+	}
+	return d->dat[p];
 }
 
 static void
-nil_deo(Device *d, Uint8 port)
+uxn11_deo(Uxn *u, Uint8 addr, Uint8 v)
 {
-	(void)d;
-	(void)port;
+	Uint8 p = addr & 0x0f;
+	Device *d = &u->dev[addr >> 4];
+	d->dat[p] = v;
+	switch(addr & 0xf0) {
+	case 0x00: system_deo(d, p); break;
+	case 0x10: console_deo(d, p); break;
+	case 0x20: screen_deo(d, p); break;
+	case 0xa0: file_deo(d, p); break;
+	case 0xb0: file_deo(d, p); break;
+	}
 }
 
 static void
@@ -160,22 +176,8 @@ start(Uxn *u, char *rom)
 	if(!load_rom(u, rom))
 		return error("Load", "Failed");
 	fprintf(stderr, "Loaded %s\n", rom);
-	/* system   */ uxn_port(u, 0x0, nil_dei, system_deo);
-	/* console  */ uxn_port(u, 0x1, nil_dei, console_deo);
-	/* screen   */ devscreen = uxn_port(u, 0x2, screen_dei, screen_deo);
-	/* empty    */ uxn_port(u, 0x3, nil_dei, nil_deo);
-	/* empty    */ uxn_port(u, 0x4, nil_dei, nil_deo);
-	/* empty    */ uxn_port(u, 0x5, nil_dei, nil_deo);
-	/* empty    */ uxn_port(u, 0x6, nil_dei, nil_deo);
-	/* empty    */ uxn_port(u, 0x7, nil_dei, nil_deo);
-	/* control  */ devctrl = uxn_port(u, 0x8, nil_dei, nil_deo);
-	/* mouse    */ devmouse = uxn_port(u, 0x9, nil_dei, nil_deo);
-	/* file0    */ uxn_port(u, 0xa, file_dei, file_deo);
-	/* file1    */ uxn_port(u, 0xb, file_dei, file_deo);
-	/* datetime */ uxn_port(u, 0xc, datetime_dei, nil_deo);
-	/* empty    */ uxn_port(u, 0xd, nil_dei, nil_deo);
-	/* reserved */ uxn_port(u, 0xe, nil_dei, nil_deo);
-	/* reserved */ uxn_port(u, 0xf, nil_dei, nil_deo);
+	u->dei = uxn11_dei;
+	u->deo = uxn11_deo;
 	screen_resize(&uxn_screen, WIDTH, HEIGHT);
 	if(!uxn_eval(u, PAGE_PROGRAM))
 		return error("Boot", "Failed to start rom.");
