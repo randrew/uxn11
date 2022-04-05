@@ -176,19 +176,6 @@ processEvent(Emulator *m)
 	}
 }
 
-static Uint8
-nil_dei(Device *d, Uint8 port)
-{
-	return d->dat[port];
-}
-
-static void
-nil_deo(Device *d, Uint8 port)
-{
-	(void)d;
-	(void)port;
-}
-
 static int
 start(Emulator *m, char *rom)
 {
