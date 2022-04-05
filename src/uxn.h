@@ -37,7 +37,6 @@ typedef struct {
 } Stack;
 
 typedef struct Device {
-	struct Uxn *u;
 	Uint8 dat[16];
 } Device;
 

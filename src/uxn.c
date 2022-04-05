@@ -118,6 +118,5 @@ Device *
 uxn_port(Uxn *u, Uint8 id)
 {
 	Device *d = &u->dev[id];
-	d->u = u;
 	return d;
 }
