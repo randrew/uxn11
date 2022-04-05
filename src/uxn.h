@@ -32,16 +32,12 @@ typedef struct {
 	Uint8 dat[255],ptr;
 } Stack;
 
-typedef struct Device {
-	Uint8 dat[16];
-} Device;
-
 typedef struct Uxn {
 	Uint8 *ram;
 	Stack *wst, *rst;
 	Uint8 (*dei)(struct Uxn *u, Uint8 address);
 	void (*deo)(struct Uxn *u, Uint8 address, Uint8 value);
-	Device dev[16];
+	Uint8 dev[16][16];
 } Uxn;
 
 int uxn_boot(Uxn *u, Uint8 *ram);

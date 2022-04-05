@@ -32,8 +32,7 @@ uxn_eval(Uxn *u, Uint16 pc)
 	unsigned int a, b, c, j, k, bs, instr, errcode;
 	Uint8 kptr, *sp;
 	Stack *src, *dst;
-	Device *dev;
-	if(!pc || u->dev[0].dat[0xf]) return 0;
+	if(!pc || u->dev[0][0xf]) return 0;
 	while((instr = u->ram[pc++])) {
 		/* Return Mode */
 		if(instr & 0x40) {

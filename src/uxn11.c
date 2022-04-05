@@ -50,18 +50,18 @@ system_deo_special(Uxn *u, Uint8 *dat, Uint8 port)
 static int
 console_input(Uxn *u, char c)
 {
-	Uint8 *dat = u->dev[1].dat;
+	Uint8 *dat = u->dev[1];
 	dat[0x2] = c;
 	return uxn_eval(u, GETVECTOR(dat));
 }
 
 static void
-console_deo(Device *d, Uint8 port)
+console_deo(Uint8 *dat, Uint8 port)
 {
 	FILE *fd = port == 0x8 ? stdout : port == 0x9 ? stderr
 												  : 0;
 	if(fd) {
-		fputc(d->dat[port], fd);
+		fputc(dat[port], fd);
 		fflush(fd);
 	}
 }
@@ -70,32 +70,30 @@ static Uint8
 uxn11_dei(Uxn *u, Uint8 addr)
 {
 	Emulator *m = (Emulator *)u;
-	Uint8 p = addr & 0x0f;
 	int dev_id = addr >> 4;
-	Device *d = &u->dev[addr >> 4];
+	Uint8 p = addr & 0x0f, *dat = u->dev[dev_id];
 	switch(addr & 0xf0) {
-	case 0x20: screen_dei(&m->screen, d->dat, p); break;
+	case 0x20: screen_dei(&m->screen, dat, p); break;
 	case 0xa0:
-	case 0xb0: file_dei(u, d->dat, m->files[dev_id - DEV_FILE0], p); break;
-	case 0xc0: datetime_dei(d->dat, p); break;
+	case 0xb0: file_dei(u, dat, m->files[dev_id - DEV_FILE0], p); break;
+	case 0xc0: datetime_dei(dat, p); break;
 	}
-	return d->dat[p];
+	return dat[p];
 }
 
 static void
 uxn11_deo(Uxn *u, Uint8 addr, Uint8 v)
 {
 	Emulator *m = (Emulator *)u;
-	Uint8 p = addr & 0x0f;
 	int dev_id = addr >> 4;
-	Device *d = &u->dev[addr >> 4];
-	d->dat[p] = v;
+	Uint8 p = addr & 0x0f, *dat = u->dev[dev_id];
+	dat[p] = v;
 	switch(addr & 0xf0) {
-	case 0x00: system_deo(u, d->dat, p); break;
-	case 0x10: console_deo(d, p); break;
-	case 0x20: screen_deo(u, &m->screen, d->dat, p); break;
+	case 0x00: system_deo(u, dat, p); break;
+	case 0x10: console_deo(dat, p); break;
+	case 0x20: screen_deo(u, &m->screen, dat, p); break;
 	case 0xa0:
-	case 0xb0: file_deo(u, d->dat, m->files[dev_id - DEV_FILE0], p); break;
+	case 0xb0: file_deo(u, dat, m->files[dev_id - DEV_FILE0], p); break;
 	}
 }
 
@@ -156,26 +154,26 @@ processEvent(Emulator *m)
 		KeySym sym;
 		char buf[7];
 		XLookupString((XKeyPressedEvent *)&ev, buf, 7, &sym, 0);
-		controller_down(&m->u, m->u.dev[DEV_CONTROL].dat, get_button(sym));
-		controller_key(&m->u, m->u.dev[DEV_CONTROL].dat, sym < 0x80 ? sym : buf[0]);
+		controller_down(&m->u, m->u.dev[DEV_CONTROL], get_button(sym));
+		controller_key(&m->u, m->u.dev[DEV_CONTROL], sym < 0x80 ? sym : buf[0]);
 	} break;
 	case KeyRelease: {
 		KeySym sym;
 		char buf[7];
 		XLookupString((XKeyPressedEvent *)&ev, buf, 7, &sym, 0);
-		controller_up(&m->u, m->u.dev[DEV_CONTROL].dat, get_button(sym));
+		controller_up(&m->u, m->u.dev[DEV_CONTROL], get_button(sym));
 	} break;
 	case ButtonPress: {
 		XButtonPressedEvent *e = (XButtonPressedEvent *)&ev;
-		mouse_down(&m->u, m->u.dev[DEV_MOUSE].dat, 0x1 << (e->button - 1));
+		mouse_down(&m->u, m->u.dev[DEV_MOUSE], 0x1 << (e->button - 1));
 	} break;
 	case ButtonRelease: {
 		XButtonPressedEvent *e = (XButtonPressedEvent *)&ev;
-		mouse_up(&m->u, m->u.dev[DEV_MOUSE].dat, 0x1 << (e->button - 1));
+		mouse_up(&m->u, m->u.dev[DEV_MOUSE], 0x1 << (e->button - 1));
 	} break;
 	case MotionNotify: {
 		XMotionEvent *e = (XMotionEvent *)&ev;
-		mouse_pos(&m->u, m->u.dev[DEV_MOUSE].dat, e->x, e->y);
+		mouse_pos(&m->u, m->u.dev[DEV_MOUSE], e->x, e->y);
 	} break;
 	}
 }
@@ -249,7 +247,7 @@ main(int argc, char **argv)
 			processEvent(&m);
 		if(poll(&fds[1], 1, 0)) {
 			read(fds[1].fd, expirations, 8);                /* Indicate we handled the timer */
-			uxn_eval(&m.u, GETVECTOR(m.u.dev[0x2].dat)); /* Call the vector once, even if the timer fired multiple times */
+			uxn_eval(&m.u, GETVECTOR(m.u.dev[0x2])); /* Call the vector once, even if the timer fired multiple times */
 		}
 		if(m.screen.fg.changed || m.screen.bg.changed)
 			redraw(&m);
